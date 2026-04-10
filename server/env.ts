@@ -20,7 +20,7 @@ export const env = {
   DATABASE_URL: required("DATABASE_URL"),
 
   // GHL
-  GHL_PRIVATE_API_KEY: required("GHL_PRIVATE_API_KEY"),
+  GHL_PRIVATE_API_KEY: optional("GHL_PRIVATE_API_KEY"), // set in Railway dashboard
   GHL_LOCATION_ID: optional("GHL_LOCATION_ID", "4NIo95IzKUVayysfr0PX"),
 
   // Scale360 pipelines
