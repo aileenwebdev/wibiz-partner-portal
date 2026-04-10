@@ -15,8 +15,7 @@ import { fireMakeWebhook, ghlCreateContact } from "../../lib/ghl";
 
 /**
  * getNextRepCode()
- * Sequential: BC-360, BC-361 … Locked at DB level to prevent race conditions.
- * Start offset is 360 (brand convention).
+ * Sequential: WBZ-001, WBZ-002 … Locked at DB level to prevent race conditions.
  */
 export async function getNextRepCode(): Promise<string> {
   const last = await db.query.reps.findFirst({
@@ -24,10 +23,10 @@ export async function getNextRepCode(): Promise<string> {
     columns: { repCode: true },
   });
 
-  if (!last) return "BC-360";
+  if (!last) return "WBZ-001";
 
-  const num = parseInt(last.repCode.replace("BC-", ""), 10);
-  return `BC-${num + 1}`;
+  const num = parseInt(last.repCode.replace(/^[A-Z]+-/, ""), 10);
+  return `WBZ-${String(num + 1).padStart(3, "0")}`;
 }
 
 // ─── Create Rep ───────────────────────────────────────────────────────────────
@@ -53,7 +52,7 @@ export async function createRep(input: CreateRepInput): Promise<typeof reps.$inf
   const passwordHash = await bcrypt.hash(tempPassword, 10);
 
   // Username derived from email prefix + repCode suffix to guarantee uniqueness
-  const username = `${input.email.split("@")[0]}.${repCode.replace("BC-", "").toLowerCase()}`;
+  const username = `${input.email.split("@")[0]}.${repCode.replace("WBZ-", "").toLowerCase()}`;
 
   // Referral link
   const referralLink = `https://scale360.wibiz.ai/?ref=${repCode}`;
