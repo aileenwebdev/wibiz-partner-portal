@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { trpc } from "../lib/trpc";
-import { COMMISSION_SUMMARY } from "../../../server/lib/commission";
+import { COMMISSION_SUMMARY } from "../lib/constants";
 
 type Tab = "overview" | "leads" | "team" | "commissions" | "certification" | "invite";
 
