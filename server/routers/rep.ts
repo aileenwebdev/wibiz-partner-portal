@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, publicProcedure, authedProcedure, adminProcedure } from "./trpc";
+import { env } from "../env";
 import {
   createRep,
   getRepByCode,
@@ -23,6 +24,18 @@ import { desc } from "drizzle-orm";
 
 export const repRouter = router({
   // ─── Auth ────────────────────────────────────────────────────────────────
+
+  adminLogin: publicProcedure
+    .input(z.object({ username: z.string(), password: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      if (!env.ADMIN_PASSWORD) throw new TRPCError({ code: "FORBIDDEN", message: "Admin login not configured" });
+      if (input.username !== env.ADMIN_USERNAME || input.password !== env.ADMIN_PASSWORD)
+        throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid admin credentials" });
+
+      (ctx.session as unknown as Record<string, unknown>).isAdmin = true;
+      (ctx.session as unknown as Record<string, unknown>).repCode = "ADMIN";
+      return { ok: true };
+    }),
 
   login: publicProcedure
     .input(z.object({ username: z.string(), password: z.string() }))

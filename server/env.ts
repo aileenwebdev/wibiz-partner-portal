@@ -38,6 +38,10 @@ export const env = {
   // Make.com
   MAKE_WEBHOOK_URL: optional("MAKE_WEBHOOK_URL"),
 
+  // Admin
+  ADMIN_USERNAME: optional("ADMIN_USERNAME", "admin"),
+  ADMIN_PASSWORD: optional("ADMIN_PASSWORD"),
+
   // Kickstart
   KICKSTART_ENABLED: optional("KICKSTART_ENABLED", "false") === "true",
   KICKSTART_WEBHOOK_URL: optional("KICKSTART_WEBHOOK_URL"),

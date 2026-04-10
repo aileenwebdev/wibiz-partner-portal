@@ -63,25 +63,105 @@ export default function AdminDashboard() {
 // ─── Agents ───────────────────────────────────────────────────────────────────
 
 function AgentsTab() {
-  const { data: agents, isLoading } = trpc.rep.list.useQuery({ limit: 200 });
+  const { data: agents, isLoading, refetch } = trpc.rep.list.useQuery({ limit: 200 });
+  const [showForm, setShowForm] = useState(false);
+  const [newAgent, setNewAgent] = useState({ email: "", legalFullName: "", agentLevel: "Associate", uplineRepCode: "" });
+  const [created, setCreated] = useState<{ repCode: string; username: string; tempPassword: string } | null>(null);
+
+  const createRep = trpc.rep.create.useMutation({
+    onSuccess: (rep) => {
+      setCreated({ repCode: rep.repCode, username: rep.username ?? rep.email, tempPassword: rep.tempPasswordPlain ?? "(see DB)" });
+      setShowForm(false);
+      setNewAgent({ email: "", legalFullName: "", agentLevel: "Associate", uplineRepCode: "" });
+      refetch();
+    },
+  });
 
   if (isLoading) return <LoadingCard />;
 
   return (
-    <AdminTable
-      title="All Agents"
-      headers={["Rep Code", "Name", "Level", "Email", "Upline", "Active"]}
-      rows={(agents ?? []).map((r) => [
-        <span className="font-mono text-orange-600">{r.repCode}</span>,
-        r.legalFullName ?? "—",
-        r.agentLevel,
-        r.email,
-        r.uplineRepCode ?? "—",
-        <span className={`text-xs px-2 py-0.5 rounded-full ${r.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
-          {r.isActive ? "Active" : "Inactive"}
-        </span>,
-      ])}
-    />
+    <div className="space-y-4">
+      {/* Created credentials banner */}
+      {created && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm space-y-1">
+          <p className="font-medium text-green-800">Agent created — share these credentials:</p>
+          <p className="font-mono text-green-700">Rep Code: <strong>{created.repCode}</strong></p>
+          <p className="font-mono text-green-700">Username: <strong>{created.username}</strong></p>
+          <p className="font-mono text-green-700">Temp Password: <strong>{created.tempPassword}</strong></p>
+          <p className="text-green-600 text-xs mt-1">Agent should change their password after first login.</p>
+          <button onClick={() => setCreated(null)} className="mt-2 text-xs text-green-500 hover:text-green-700 underline">Dismiss</button>
+        </div>
+      )}
+
+      {/* Create form */}
+      {showForm ? (
+        <div className="bg-white rounded-lg border p-4 space-y-3">
+          <h3 className="font-medium text-gray-900 text-sm">New Agent</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Email *</label>
+              <input type="email" value={newAgent.email}
+                onChange={(e) => setNewAgent((f) => ({ ...f, email: e.target.value }))}
+                className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Full Name</label>
+              <input type="text" value={newAgent.legalFullName}
+                onChange={(e) => setNewAgent((f) => ({ ...f, legalFullName: e.target.value }))}
+                className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Agent Level *</label>
+              <select value={newAgent.agentLevel}
+                onChange={(e) => setNewAgent((f) => ({ ...f, agentLevel: e.target.value }))}
+                className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500">
+                {["Associate", "Senior Associate", "Agency", "Super Team", "Super Agency"].map((l) => (
+                  <option key={l}>{l}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-600 mb-1">Upline Rep Code</label>
+              <input type="text" placeholder="BC-360" value={newAgent.uplineRepCode}
+                onChange={(e) => setNewAgent((f) => ({ ...f, uplineRepCode: e.target.value }))}
+                className="w-full border rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500" />
+            </div>
+          </div>
+          {createRep.isError && <p className="text-xs text-red-600">{createRep.error.message}</p>}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={() => createRep.mutate({ email: newAgent.email, legalFullName: newAgent.legalFullName || undefined, agentLevel: newAgent.agentLevel as any, uplineRepCode: newAgent.uplineRepCode || undefined })}
+              disabled={!newAgent.email || createRep.isPending}
+              className="bg-orange-500 text-white text-xs px-3 py-1.5 rounded hover:bg-orange-600 disabled:opacity-50">
+              {createRep.isPending ? "Creating…" : "Create Agent"}
+            </button>
+            <button onClick={() => setShowForm(false)} className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5">Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex justify-end">
+          <button onClick={() => setShowForm(true)}
+            className="bg-orange-500 text-white text-sm px-4 py-1.5 rounded-md hover:bg-orange-600">
+            + New Agent
+          </button>
+        </div>
+      )}
+
+      <AdminTable
+        title="All Agents"
+        headers={["Rep Code", "Name", "Level", "Email", "Upline", "Active"]}
+        rows={(agents ?? []).map((r) => [
+          <span className="font-mono text-orange-600">{r.repCode}</span>,
+          r.legalFullName ?? "—",
+          r.agentLevel,
+          r.email,
+          r.uplineRepCode ?? "—",
+          <span className={`text-xs px-2 py-0.5 rounded-full ${r.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
+            {r.isActive ? "Active" : "Inactive"}
+          </span>,
+        ])}
+      />
+    </div>
   );
 }
 
