@@ -8,15 +8,14 @@ import AdminDashboard from "./pages/AdminDashboard";
 import JoinAgent from "./pages/JoinAgent";
 import AgentVerifyPortal from "./pages/AgentVerifyPortal";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { retry: 1, staleTime: 30_000 },
-  },
-});
-
-const trpcClient = createTrpcClient();
-
 export default function App() {
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: { retry: 1, staleTime: 30_000 },
+    },
+  }));
+  const [trpcClient] = useState(() => createTrpcClient());
+
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
