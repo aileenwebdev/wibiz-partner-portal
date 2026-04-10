@@ -2,7 +2,7 @@
 cmds = ["npm install --force"]
 
 [phases.build]
-cmds = ["npm run build"]
+cmds = ["rm -rf node_modules/.cache && npm run build"]
 
 [start]
 cmd = "npm start"
