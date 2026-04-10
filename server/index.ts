@@ -4,6 +4,7 @@
  */
 
 import "dotenv/config";
+import path from "path";
 import express from "express";
 import cors from "cors";
 import session from "express-session";
@@ -68,7 +69,6 @@ app.get("/health", (_, res) => res.json({ ok: true }));
 // ─── Static (client build) ────────────────────────────────────────────────────
 
 if (process.env.NODE_ENV === "production") {
-  const path = await import("path");
   app.use(express.static(path.join(process.cwd(), "client/dist")));
   app.get("*", (_, res) => {
     res.sendFile(path.join(process.cwd(), "client/dist/index.html"));

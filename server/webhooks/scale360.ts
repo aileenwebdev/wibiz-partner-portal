@@ -28,22 +28,22 @@ export async function handleScale360Webhook(req: Request, res: Response): Promis
 
     // 2. Map audit fields onto the lead row
     if (result.leadId) {
-      const auditUpdate: Record<string, unknown> = {
+      const auditUpdate: Partial<typeof leads.$inferInsert> = {
         updatedAt: new Date(),
       };
 
       // ALL_CAPS → s360* mapping (matches BC360 pattern)
-      if (payload.AUDIT_SCORE        || payload.audit_score)        auditUpdate.s360AuditScore  = String(payload.AUDIT_SCORE       ?? payload.audit_score);
-      if (payload.AUDIT_STATUS       || payload.audit_status)       auditUpdate.s360AuditStatus = String(payload.AUDIT_STATUS      ?? payload.audit_status);
-      if (payload.PLAN_NAME          || payload.plan_name)          auditUpdate.s360PlanName    = String(payload.PLAN_NAME         ?? payload.plan_name);
-      if (payload.PDF_LINK           || payload.pdf_link)           auditUpdate.s360PdfLink     = String(payload.PDF_LINK          ?? payload.pdf_link);
-      if (payload.ROI                || payload.roi)                auditUpdate.s360Roi         = String(payload.ROI               ?? payload.roi);
-      if (payload.EMPLOYEE_COUNT     || payload.employee_count)     auditUpdate.s360EmployeeCount = String(payload.EMPLOYEE_COUNT  ?? payload.employee_count);
-      if (payload.INDUSTRY           || payload.industry)           auditUpdate.s360Industry    = String(payload.INDUSTRY          ?? payload.industry);
+      if (payload.AUDIT_SCORE        || payload.audit_score)        auditUpdate.s360AuditScore    = String(payload.AUDIT_SCORE       ?? payload.audit_score);
+      if (payload.AUDIT_STATUS       || payload.audit_status)       auditUpdate.s360AuditStatus   = String(payload.AUDIT_STATUS      ?? payload.audit_status);
+      if (payload.PLAN_NAME          || payload.plan_name)          auditUpdate.s360PlanName      = String(payload.PLAN_NAME         ?? payload.plan_name);
+      if (payload.PDF_LINK           || payload.pdf_link)           auditUpdate.s360PdfLink       = String(payload.PDF_LINK          ?? payload.pdf_link);
+      if (payload.ROI                || payload.roi)                auditUpdate.s360Roi           = String(payload.ROI               ?? payload.roi);
+      if (payload.EMPLOYEE_COUNT     || payload.employee_count)     auditUpdate.s360EmployeeCount = String(payload.EMPLOYEE_COUNT    ?? payload.employee_count);
+      if (payload.INDUSTRY           || payload.industry)           auditUpdate.s360Industry      = String(payload.INDUSTRY          ?? payload.industry);
 
       if (Object.keys(auditUpdate).length > 1) {
         auditUpdate.s360AuditReceivedAt = new Date();
-        await db.update(leads).set(auditUpdate as Parameters<typeof db.update>[0]).where(eq(leads.id, result.leadId));
+        await db.update(leads).set(auditUpdate).where(eq(leads.id, result.leadId));
       }
     }
 

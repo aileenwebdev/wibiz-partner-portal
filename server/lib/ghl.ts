@@ -96,6 +96,8 @@ export interface GhlContactInput {
   agentLevel?:      string;
   uplineRepCode?:   string;
   uplineName?:      string;
+  uplineEmail?:     string;
+  uplinePhone?:     string;
   mgaRepCode?:      string;
   dashboardUrl?:    string;
   verifyLink?:      string;
@@ -120,7 +122,7 @@ export async function ghlCreateContact(input: GhlContactInput): Promise<string> 
 
 export async function ghlUpdateContact(
   ghlContactId: string,
-  fields: Partial<GhlContactInput> & Record<string, unknown>
+  fields: Partial<GhlContactInput>
 ): Promise<void> {
   const customFields = buildCustomFields(fields as GhlContactInput);
   await ghlApi.put(`/contacts/${ghlContactId}`, {
@@ -164,7 +166,7 @@ export async function ghlSyncUplineFields(
     uplineName:  upline.name,
     uplineEmail: upline.email,
     uplinePhone: upline.phone,
-  } as GhlContactInput & Record<string, unknown>);
+  });
 }
 
 // ─── Inbound Webhook ──────────────────────────────────────────────────────────
@@ -186,7 +188,7 @@ export async function fireMakeWebhook(event: string, data: unknown): Promise<voi
 
 // ─── Custom Field Builder ─────────────────────────────────────────────────────
 
-function buildCustomFields(input: GhlContactInput & Record<string, unknown>): Array<{ key: string; field_value: string }> {
+function buildCustomFields(input: GhlContactInput): Array<{ key: string; field_value: string }> {
   const map: Array<[keyof typeof GHL_FIELDS, string | undefined]> = [
     ["repCode",            input.repCode],
     ["agentLevel",         input.agentLevel],

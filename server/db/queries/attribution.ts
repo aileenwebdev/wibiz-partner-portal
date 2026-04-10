@@ -4,7 +4,7 @@
 
 import { db } from "../client";
 import { attributionLog, webhookLogs, leads } from "../schema";
-import { eq, desc, and, ne, isNull } from "drizzle-orm";
+import { eq, desc, and, ne, isNull, like, or } from "drizzle-orm";
 
 // ─── Attribution Log ──────────────────────────────────────────────────────────
 
@@ -43,7 +43,6 @@ export async function getUnresolvedLeads() {
 
 export async function searchLeads(query: string) {
   // Simple email/name search — extend with full-text if needed
-  const { like, or } = await import("drizzle-orm");
   return db.query.leads.findMany({
     where: or(
       like(leads.email, `%${query}%`),

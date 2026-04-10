@@ -30,8 +30,8 @@ export const repRouter = router({
       const rep = await verifyRepPassword(input.username, input.password);
       if (!rep) throw new TRPCError({ code: "UNAUTHORIZED", message: "Invalid credentials" });
 
-      (ctx.session as Record<string, unknown>).repCode = rep.repCode;
-      (ctx.session as Record<string, unknown>).repId   = rep.id;
+      (ctx.session as unknown as Record<string, unknown>).repCode = rep.repCode;
+      (ctx.session as unknown as Record<string, unknown>).repId   = rep.id;
 
       return {
         repCode:   rep.repCode,
