@@ -17,6 +17,10 @@ import { handleScale360Webhook, handleScale360PaymentWebhook, handleKickstartPro
 
 const app = express();
 
+// Trust Railway's reverse proxy so req.secure reflects HTTPS correctly.
+// Without this, express-session never sets the cookie when secure:true.
+app.set("trust proxy", 1);
+
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
 app.use(cors({
@@ -37,6 +41,7 @@ app.use(
     cookie: {
       secure:   env.APP_BASE_URL.startsWith("https"),
       httpOnly: true,
+      sameSite: "lax",
       maxAge:   7 * 24 * 60 * 60 * 1000, // 7 days
     },
   })

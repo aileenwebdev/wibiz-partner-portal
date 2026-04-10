@@ -1,6 +1,7 @@
 /**
  * JoinAgent.tsx
- * Self-registration page. URL: /join-agent?ref=BC-XXX&level=Associate
+ * Self-registration page. URL: /join-agent?ref=WBZ-XXX&level=Associate
+ * ref and level are both optional — agent can register directly.
  */
 
 import { useState } from "react";
@@ -31,11 +32,14 @@ export default function JoinAgent() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="bg-white p-8 rounded-lg shadow-sm border max-w-md text-center">
-          <h2 className="text-xl font-semibold mb-2">Application Submitted</h2>
-          <p className="text-gray-600 text-sm">
-            Your application has been received. You'll hear from us shortly with next steps.
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 max-w-md w-full text-center">
+          <div className="w-14 h-14 bg-brand-gradient rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-white text-2xl">✓</span>
+          </div>
+          <h2 className="text-xl font-bold text-navy-500 mb-2">Application Submitted!</h2>
+          <p className="text-gray-400 text-sm">
+            Your application has been received. Our team will review it and send your login credentials shortly.
           </p>
         </div>
       </div>
@@ -43,74 +47,112 @@ export default function JoinAgent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-lg mx-auto">
-        <div className="bg-white rounded-lg shadow-sm border p-8">
-          <h1 className="text-xl font-semibold mb-1">Join the Wibiz Partner Network</h1>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-brand-gradient">
+        <div className="max-w-3xl mx-auto px-6 py-5 flex items-center justify-between">
+          <img
+            src="https://wibiz.ai/wp-content/uploads/2026/01/logo.png"
+            alt="Wibiz"
+            className="h-7 w-auto object-contain brightness-0 invert"
+          />
           {ref && (
-            <p className="text-sm text-gray-500 mb-6">
-              Referred by: <span className="font-mono text-orange-600">{ref}</span>
-              {level && ` · Applying as ${level}`}
-            </p>
+            <span className="text-xs text-white/70 bg-white/10 px-3 py-1 rounded-full font-mono">
+              Referred by {ref}
+            </span>
           )}
+        </div>
+      </header>
 
-          {/* Commission grid teaser */}
-          <div className="mb-6 bg-orange-50 rounded-md p-4">
-            <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide mb-2">Scale360 Commission Rates</p>
-            <div className="grid grid-cols-3 gap-2 text-center text-xs">
-              {COMMISSION_SUMMARY.map((row) => (
-                <div key={row.level} className="bg-white rounded p-2 border">
-                  <div className="font-semibold text-gray-700">{row.level}</div>
-                  <div className="text-orange-600 font-bold text-sm">{row.setup}</div>
-                  <div className="text-gray-400">setup + monthly</div>
-                </div>
-              ))}
+      <div className="max-w-3xl mx-auto px-4 py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+          {/* Commission teaser — sidebar */}
+          <div className="lg:col-span-2 space-y-4">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <h3 className="font-bold text-navy-500 text-sm mb-1">Partner Commission Rates</h3>
+              <p className="text-xs text-gray-400 mb-4">Earn on every Scale360 client you bring in.</p>
+              <div className="space-y-2">
+                {COMMISSION_SUMMARY.map((row) => (
+                  <div
+                    key={row.level}
+                    className={`flex items-center justify-between rounded-lg px-3 py-2 border text-sm
+                      ${row.level === level ? "bg-brand-gradient text-white border-transparent" : "border-gray-100 bg-gray-50"}`}
+                  >
+                    <span className={`text-xs font-medium ${row.level === level ? "text-white/80" : "text-gray-500"}`}>
+                      {row.level}
+                    </span>
+                    <span className={`font-bold ${row.level === level ? "text-white" : "text-orange-500"}`}>
+                      {row.setup}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-navy-50 border border-navy-100 rounded-2xl p-4">
+              <p className="text-xs font-semibold text-navy-500 mb-1">Applying as</p>
+              <p className="text-sm font-bold text-navy-500">{level}</p>
+              <p className="text-xs text-navy-400 mt-1">Rep code will be auto-assigned after approval.</p>
             </div>
           </div>
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              setError("");
-              submit.mutate({
-                ...form,
-                referredByRepCode: ref || undefined,
-                requestedLevel:    level,
-              });
-            }}
-            className="space-y-4"
-          >
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="First Name" value={form.firstName} onChange={(v) => setForm((f) => ({ ...f, firstName: v }))} required />
-              <Field label="Last Name"  value={form.lastName}  onChange={(v) => setForm((f) => ({ ...f, lastName: v }))}  required />
+          {/* Registration form */}
+          <div className="lg:col-span-3">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              <h1 className="text-xl font-bold text-navy-500 mb-1">Join the Wibiz Partner Network</h1>
+              <p className="text-sm text-gray-400 mb-6">Fill in your details below. Approval is typically within 24 hours.</p>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setError("");
+                  submit.mutate({
+                    ...form,
+                    referredByRepCode: ref || undefined,
+                    requestedLevel:    level,
+                  });
+                }}
+                className="space-y-4"
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="First Name" value={form.firstName} onChange={(v) => setForm((f) => ({ ...f, firstName: v }))} required />
+                  <Field label="Last Name"  value={form.lastName}  onChange={(v) => setForm((f) => ({ ...f, lastName: v }))}  required />
+                </div>
+                <Field label="Email"         type="email" value={form.email}       onChange={(v) => setForm((f) => ({ ...f, email: v }))}       required />
+                <Field label="Phone"         type="tel"   value={form.phone}       onChange={(v) => setForm((f) => ({ ...f, phone: v }))} />
+                <Field label="Business Name"             value={form.businessName} onChange={(v) => setForm((f) => ({ ...f, businessName: v }))} />
+
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={form.agreementAccepted}
+                    onChange={(e) => setForm((f) => ({ ...f, agreementAccepted: e.target.checked }))}
+                    className="mt-0.5 accent-navy-500"
+                    required
+                  />
+                  <span className="text-xs text-gray-500 leading-relaxed">
+                    I agree to the Wibiz Partner Agreement and understand the commission structure outlined.
+                  </span>
+                </label>
+
+                {error && (
+                  <div className="bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={submit.isPending || !form.agreementAccepted}
+                  className="w-full bg-brand-gradient text-white py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition"
+                >
+                  {submit.isPending ? "Submitting…" : "Submit Application"}
+                </button>
+              </form>
             </div>
-            <Field label="Email"         type="email" value={form.email}        onChange={(v) => setForm((f) => ({ ...f, email: v }))}        required />
-            <Field label="Phone"         type="tel"   value={form.phone}        onChange={(v) => setForm((f) => ({ ...f, phone: v }))} />
-            <Field label="Business Name"             value={form.businessName}  onChange={(v) => setForm((f) => ({ ...f, businessName: v }))} />
+          </div>
 
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.agreementAccepted}
-                onChange={(e) => setForm((f) => ({ ...f, agreementAccepted: e.target.checked }))}
-                className="mt-0.5"
-                required
-              />
-              <span className="text-xs text-gray-600">
-                I agree to the Wibiz Partner Agreement and understand the commission structure outlined above.
-              </span>
-            </label>
-
-            {error && <p className="text-sm text-red-600">{error}</p>}
-
-            <button
-              type="submit"
-              disabled={submit.isPending || !form.agreementAccepted}
-              className="w-full bg-orange-500 text-white py-2 rounded-md text-sm font-medium hover:bg-orange-600 disabled:opacity-50"
-            >
-              {submit.isPending ? "Submitting…" : "Submit Application"}
-            </button>
-          </form>
         </div>
       </div>
     </div>
@@ -118,18 +160,18 @@ export default function JoinAgent() {
 }
 
 function Field({
-  label, value, onChange, type = "text", required = false
+  label, value, onChange, type = "text", required = false,
 }: {
   label: string; value: string; onChange: (v: string) => void; type?: string; required?: boolean;
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">{label}</label>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+        className="w-full border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-navy-400 focus:border-transparent transition"
         required={required}
       />
     </div>
