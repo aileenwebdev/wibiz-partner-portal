@@ -10,7 +10,7 @@ import { db } from "../db/client";
 import { agentVerificationSessions, reps } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { updateRep } from "../db/queries/reps";
-import { nanoid } from "nanoid";
+import { randomBytes } from "node:crypto";
 import { env } from "../env";
 
 export const agentVerificationRouter = router({
@@ -23,7 +23,7 @@ export const agentVerificationRouter = router({
       });
       if (!rep) throw new TRPCError({ code: "NOT_FOUND" });
 
-      const token = nanoid(32);
+      const token = randomBytes(24).toString("base64url");
       const verifyLink = `${env.APP_BASE_URL}/agent-verify?token=${token}`;
 
       await db.insert(agentVerificationSessions).values({

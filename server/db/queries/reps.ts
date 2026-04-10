@@ -7,7 +7,7 @@ import { db } from "../client";
 import { reps, type AgentLevel } from "../schema";
 import { eq, like, and, or, isNull, desc, asc, ne } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { nanoid } from "nanoid";
+import { randomBytes } from "node:crypto";
 import { env } from "../../env";
 import { fireMakeWebhook, ghlCreateContact } from "../../lib/ghl";
 
@@ -49,7 +49,7 @@ export async function createRep(input: CreateRepInput): Promise<typeof reps.$inf
   const mgaRepCode = await resolveMgaRepCode(input.uplineRepCode);
 
   // Password
-  const tempPassword = input.password ?? nanoid(10);
+  const tempPassword = input.password ?? randomBytes(8).toString("base64url").slice(0, 10);
   const passwordHash = await bcrypt.hash(tempPassword, 10);
 
   // Username derived from email prefix + repCode suffix to guarantee uniqueness

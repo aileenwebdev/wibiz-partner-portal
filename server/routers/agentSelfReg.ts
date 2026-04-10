@@ -15,7 +15,7 @@ import {
 } from "../db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { getRepByCode, createRep, getFullDownline } from "../db/queries/reps";
-import { nanoid } from "nanoid";
+import { randomBytes } from "node:crypto";
 import { env } from "../env";
 
 export const agentSelfRegRouter = router({
@@ -128,7 +128,7 @@ export const agentSelfRegRouter = router({
       });
 
       // Generate verify link
-      const token = nanoid(32);
+      const token = randomBytes(24).toString("base64url");
       const verifyLink = `${env.APP_BASE_URL}/agent-verify?token=${token}`;
 
       await db.insert(agentVerificationSessions).values({
