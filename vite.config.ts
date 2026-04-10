@@ -12,7 +12,10 @@ export default defineConfig({
       // Prevent Rollup from trying to bundle server-side modules.
       // AppRouter is imported as `import type` so it's erased at compile
       // time — this external declaration is a belt-and-suspenders guard.
-      external: (id) => id.includes("/server/") && !id.includes("node_modules"),
+      external: (id) =>
+        (id.startsWith("/") || id.startsWith(".")) &&
+        id.includes("/server/") &&
+        !id.includes("node_modules"),
     },
   },
   resolve: {
