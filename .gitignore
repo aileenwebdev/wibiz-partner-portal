@@ -1,0 +1,20 @@
+node_modules/
+dist/
+client/dist/
+.env
+*.local
+
+# Drizzle generated
+drizzle/migrations/meta/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Railway
+.railway/
+.claude/
