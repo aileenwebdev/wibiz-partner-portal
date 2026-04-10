@@ -7,7 +7,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import session from "express-session";
-import { createExpressMiddleware } from "@trpc/express";
+import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "./routers";
 import { createContext } from "./routers/trpc";
 import { env } from "./env";
