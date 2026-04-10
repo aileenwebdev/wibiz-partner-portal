@@ -14,7 +14,6 @@
   "dependencies": {
     "@trpc/server": "^10.45.2",
     "@trpc/client": "^10.45.2",
-    "@trpc/react-query": "^10.45.2",
     "@trpc/express": "^10.45.2",
     "@tanstack/react-query": "^4.36.1",
     "drizzle-orm": "^0.36.0",
