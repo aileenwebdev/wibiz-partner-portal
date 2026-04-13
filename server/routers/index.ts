@@ -11,6 +11,8 @@ import { agentSelfRegRouter }     from "./agentSelfReg";
 import { repUpgradeRouter }       from "./repUpgrade";
 import { certificationRouter }    from "./certification";
 import { agentVerificationRouter } from "./agentVerification";
+import { eventsRouter }           from "./events";
+import { videosRouter }           from "./videos";
 
 export const appRouter = router({
   rep:               repRouter,
@@ -20,6 +22,8 @@ export const appRouter = router({
   repUpgrade:        repUpgradeRouter,
   certification:     certificationRouter,
   agentVerification: agentVerificationRouter,
+  events:            eventsRouter,
+  videos:            videosRouter,
 });
 
 export type AppRouter = typeof appRouter;

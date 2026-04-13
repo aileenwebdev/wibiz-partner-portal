@@ -350,6 +350,39 @@ export const systemSettings = mysqlTable("system_settings", {
   updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
 });
 
+// ─── Events ───────────────────────────────────────────────────────────────────
+export const events = mysqlTable("events", {
+  id:           int("id").primaryKey().autoincrement(),
+  title:        varchar("title", { length: 255 }).notNull(),
+  description:  text("description"),
+  platform:     mysqlEnum("platform", ["zoom", "meet", "webinar", "in_person"]).notNull().default("zoom"),
+  meetingUrl:   varchar("meeting_url", { length: 500 }),
+  badge:        varchar("badge", { length: 50 }).default("Training"),  // Training | Team | Live | etc.
+  badgeColor:   varchar("badge_color", { length: 30 }).default("purple"), // purple|blue|pink|green|amber
+  startsAt:     timestamp("starts_at").notNull(),
+  endsAt:       timestamp("ends_at"),
+  attendeeCount: int("attendee_count").default(0),
+  isPublished:  boolean("is_published").default(true),
+  createdAt:    timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt:    timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+});
+
+// ─── Videos ───────────────────────────────────────────────────────────────────
+export const videos = mysqlTable("videos", {
+  id:              int("id").primaryKey().autoincrement(),
+  title:           varchar("title", { length: 255 }).notNull(),
+  category:        varchar("category", { length: 50 }).notNull().default("Getting Started"), // Getting Started | Sales Tips | Product | Admin Guide
+  duration:        varchar("duration", { length: 20 }),   // e.g. "12:05"
+  videoUrl:        varchar("video_url", { length: 500 }),
+  thumbnailColor:  varchar("thumbnail_color", { length: 50 }).default("#15283A"), // hex or gradient key
+  featured:        boolean("featured").default(false),
+  viewCount:       int("view_count").default(0),
+  isPublished:     boolean("is_published").default(true),
+  createdBy:       varchar("created_by", { length: 100 }).default("Admin"),
+  createdAt:       timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
+  updatedAt:       timestamp("updated_at").default(sql`CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`),
+});
+
 // ─── Lead Activity Log ────────────────────────────────────────────────────────
 export const leadActivity = mysqlTable(
   "lead_activity",

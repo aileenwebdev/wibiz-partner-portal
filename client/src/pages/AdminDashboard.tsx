@@ -37,6 +37,9 @@ function Icon({ name, size = 15, className }: { name: string; size?: number; cla
     case "plus":      return <svg {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
     case "target":    return <svg {...p}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;
     case "edit":      return <svg {...p}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
+    case "calendar":  return <svg {...p}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+    case "video":     return <svg {...p}><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>;
+    case "trash":     return <svg {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6m4-6v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>;
     default:          return <svg {...p}/>;
   }
 }
@@ -45,7 +48,7 @@ const LEVELS = ["Associate", "Senior Associate", "Agency", "Super Team", "Super 
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type Tab = "agents" | "attribution" | "webhooks" | "commissions" | "registrations" | "upgrades" | "verifications";
+type Tab = "agents" | "attribution" | "webhooks" | "commissions" | "registrations" | "upgrades" | "verifications" | "events" | "videos";
 
 const NAV_GROUPS: { label: string; items: { id: Tab; label: string; icon: string }[] }[] = [
   {
@@ -61,6 +64,13 @@ const NAV_GROUPS: { label: string; items: { id: Tab; label: string; icon: string
     label: "Finance",
     items: [
       { id: "commissions", label: "Commissions", icon: "dollar" },
+    ],
+  },
+  {
+    label: "Content",
+    items: [
+      { id: "events", label: "Events",        icon: "calendar" },
+      { id: "videos", label: "Video Library", icon: "video"    },
     ],
   },
   {
@@ -240,6 +250,8 @@ export default function AdminDashboard() {
           {tab === "attribution"   && <AttributionTab />}
           {tab === "webhooks"      && <WebhooksTab />}
           {tab === "verifications" && <VerificationsTab />}
+          {tab === "events"        && <AdminEventsTab />}
+          {tab === "videos"        && <AdminVideosTab />}
         </main>
       </div>
     </div>
@@ -712,6 +724,226 @@ function VerificationsTab() {
                 Resend
               </button>
             ),
+          ])}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Admin Events ─────────────────────────────────────────────────────────────
+
+const BLANK_EVENT = { title: "", description: "", platform: "zoom" as const, meetingUrl: "", badge: "Training", badgeColor: "blue", startsAt: "", endsAt: "", attendeeCount: 0, isPublished: true };
+
+function AdminEventsTab() {
+  const { data: events, isLoading, refetch } = trpc.events.listAll.useQuery();
+  const create = trpc.events.create.useMutation({ onSuccess: () => { refetch(); setShowForm(false); setForm(BLANK_EVENT); } });
+  const update = trpc.events.update.useMutation({ onSuccess: () => { refetch(); setEditId(null); } });
+  const del    = trpc.events.delete.useMutation({ onSuccess: () => refetch() });
+
+  const [showForm, setShowForm] = useState(false);
+  const [editId,   setEditId]   = useState<number | null>(null);
+  const [form,     setForm]     = useState(BLANK_EVENT);
+
+  function openEdit(ev: any) {
+    setEditId(ev.id);
+    setForm({
+      title: ev.title, description: ev.description ?? "", platform: ev.platform,
+      meetingUrl: ev.meetingUrl ?? "", badge: ev.badge ?? "Training", badgeColor: ev.badgeColor ?? "blue",
+      startsAt: ev.startsAt ? new Date(ev.startsAt).toISOString().slice(0, 16) : "",
+      endsAt:   ev.endsAt   ? new Date(ev.endsAt).toISOString().slice(0, 16) : "",
+      attendeeCount: ev.attendeeCount ?? 0, isPublished: ev.isPublished ?? true,
+    });
+    setShowForm(false);
+  }
+
+  function saveForm() {
+    if (editId) update.mutate({ id: editId, ...form });
+    else        create.mutate(form);
+  }
+
+  if (isLoading) return <LoadingCard />;
+
+  const isEditing = editId !== null;
+  const formOpen  = showForm || isEditing;
+
+  return (
+    <div className="space-y-5">
+      <SectionHeader title="Events" count={events?.length} action={
+        !formOpen && <PrimaryBtn onClick={() => { setShowForm(true); setForm(BLANK_EVENT); setEditId(null); }}><Icon name="plus" size={13} /> New Event</PrimaryBtn>
+      } />
+
+      {formOpen && (
+        <div className="bg-white rounded-[12px] border border-amber/40 shadow-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-sora font-semibold text-navy text-[13px]">{isEditing ? "Edit Event" : "New Event"}</h3>
+            <button onClick={() => { setShowForm(false); setEditId(null); }} className="text-muted hover:text-navy transition"><Icon name="x" size={15} /></button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Title *"><input className={inputCls} value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="Event title" /></Field>
+            <Field label="Platform">
+              <select className={inputCls} value={form.platform} onChange={(e) => setForm((f) => ({ ...f, platform: e.target.value as any }))}>
+                {["zoom","meet","webinar","in_person"].map((p) => <option key={p} value={p}>{p.replace("_"," ")}</option>)}
+              </select>
+            </Field>
+            <Field label="Starts At *"><input type="datetime-local" className={inputCls} value={form.startsAt} onChange={(e) => setForm((f) => ({ ...f, startsAt: e.target.value }))} /></Field>
+            <Field label="Ends At"><input type="datetime-local" className={inputCls} value={form.endsAt} onChange={(e) => setForm((f) => ({ ...f, endsAt: e.target.value }))} /></Field>
+            <Field label="Meeting URL"><input className={inputCls} value={form.meetingUrl} onChange={(e) => setForm((f) => ({ ...f, meetingUrl: e.target.value }))} placeholder="https://..." /></Field>
+            <Field label="Badge">
+              <div className="flex gap-2">
+                <input className={inputCls} value={form.badge} onChange={(e) => setForm((f) => ({ ...f, badge: e.target.value }))} placeholder="Training" />
+                <select className={inputCls + " max-w-[110px]"} value={form.badgeColor} onChange={(e) => setForm((f) => ({ ...f, badgeColor: e.target.value }))}>
+                  {["blue","purple","green","pink","amber"].map((c) => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+            </Field>
+            <Field label="Attendee Count"><input type="number" className={inputCls} value={form.attendeeCount} onChange={(e) => setForm((f) => ({ ...f, attendeeCount: Number(e.target.value) }))} /></Field>
+            <Field label="Description (optional)"><input className={inputCls} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Short description…" /></Field>
+          </div>
+          {(create.isError || update.isError) && <p className="text-[12px] text-red-500 mt-3">{(create.error ?? update.error)?.message}</p>}
+          <div className="flex items-center gap-2 mt-4">
+            <PrimaryBtn onClick={saveForm} disabled={!form.title || !form.startsAt || create.isPending || update.isPending}>
+              {(create.isPending || update.isPending) ? "Saving…" : isEditing ? "Save Changes" : "Publish Event"}
+            </PrimaryBtn>
+            <button onClick={() => { setShowForm(false); setEditId(null); }} className="text-[13px] text-muted hover:text-navy px-3 transition">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {!events?.length ? <EmptyState message="No events yet. Create your first event." /> : (
+        <DataTable
+          headers={["Title", "Date & Time", "Platform", "Attendees", "Badge", "Status", "Actions"]}
+          rows={events.map((ev) => [
+            <span key="t" className="font-medium text-navy text-[13px]">{ev.title}</span>,
+            <span key="d" className="text-[12px] text-muted whitespace-nowrap">{ev.startsAt ? new Date(ev.startsAt).toLocaleString("en-US", { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" }) : "—"}</span>,
+            <span key="p" className="capitalize text-[12px]">{ev.platform?.replace("_"," ")}</span>,
+            <span key="a">{ev.attendeeCount}</span>,
+            ev.badge ? <span key="b" className="text-[11px] bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-medium">{ev.badge}</span> : <span key="b" className="text-light">—</span>,
+            <span key="s" className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium border ${ev.isPublished ? "bg-green-50 text-green-700 border-green-200" : "bg-surface text-muted border-border"}`}>{ev.isPublished ? "Published" : "Draft"}</span>,
+            <div key="ac" className="flex gap-1.5">
+              <button onClick={() => openEdit(ev)} className="inline-flex items-center gap-1 text-[11px] border border-border px-2 py-1 rounded-[5px] hover:border-navy transition"><Icon name="edit" size={11} /> Edit</button>
+              <button onClick={() => del.mutate({ id: ev.id })} className="inline-flex items-center gap-1 text-[11px] border border-red-200 text-red-600 bg-red-50 px-2 py-1 rounded-[5px] hover:bg-red-100 transition"><Icon name="trash" size={11} /> Delete</button>
+            </div>,
+          ])}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Admin Videos ─────────────────────────────────────────────────────────────
+
+const BLANK_VIDEO = { title: "", category: "Getting Started", duration: "", videoUrl: "", thumbnailColor: "#15283A", featured: false, isPublished: true, createdBy: "Admin" };
+const THUMB_COLORS = [
+  { label: "Navy",   value: "#15283A" },
+  { label: "Amber",  value: "#824600" },
+  { label: "Blue",   value: "#1e40af" },
+  { label: "Green",  value: "#166534" },
+  { label: "Purple", value: "#4c1d95" },
+];
+
+function AdminVideosTab() {
+  const { data: videos, isLoading, refetch } = trpc.videos.listAll.useQuery();
+  const create = trpc.videos.create.useMutation({ onSuccess: () => { refetch(); setShowForm(false); setForm(BLANK_VIDEO); } });
+  const update = trpc.videos.update.useMutation({ onSuccess: () => { refetch(); setEditId(null); } });
+  const del    = trpc.videos.delete.useMutation({ onSuccess: () => refetch() });
+
+  const [showForm, setShowForm] = useState(false);
+  const [editId,   setEditId]   = useState<number | null>(null);
+  const [form,     setForm]     = useState(BLANK_VIDEO);
+
+  function openEdit(v: any) {
+    setEditId(v.id);
+    setForm({ title: v.title, category: v.category, duration: v.duration ?? "", videoUrl: v.videoUrl ?? "", thumbnailColor: v.thumbnailColor ?? "#15283A", featured: !!v.featured, isPublished: !!v.isPublished, createdBy: v.createdBy ?? "Admin" });
+    setShowForm(false);
+  }
+
+  function saveForm() {
+    if (editId) update.mutate({ id: editId, ...form });
+    else        create.mutate(form);
+  }
+
+  if (isLoading) return <LoadingCard />;
+
+  const isEditing = editId !== null;
+  const formOpen  = showForm || isEditing;
+
+  return (
+    <div className="space-y-5">
+      <SectionHeader title="Video Library" count={videos?.length} action={
+        !formOpen && <PrimaryBtn onClick={() => { setShowForm(true); setForm(BLANK_VIDEO); setEditId(null); }}><Icon name="plus" size={13} /> Add Video</PrimaryBtn>
+      } />
+
+      {formOpen && (
+        <div className="bg-white rounded-[12px] border border-amber/40 shadow-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-sora font-semibold text-navy text-[13px]">{isEditing ? "Edit Video" : "Add Video"}</h3>
+            <button onClick={() => { setShowForm(false); setEditId(null); }} className="text-muted hover:text-navy transition"><Icon name="x" size={15} /></button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Title *"><input className={inputCls} value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="Video title" /></Field>
+            <Field label="Category">
+              <select className={inputCls} value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}>
+                {["Getting Started","Sales Tips","Product","Admin Guide"].map((c) => <option key={c}>{c}</option>)}
+              </select>
+            </Field>
+            <Field label="Video URL"><input className={inputCls} value={form.videoUrl} onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))} placeholder="https://youtube.com/watch?v=..." /></Field>
+            <Field label="Duration"><input className={inputCls} value={form.duration} onChange={(e) => setForm((f) => ({ ...f, duration: e.target.value }))} placeholder="12:05" /></Field>
+            <Field label="Thumbnail Color">
+              <div className="flex gap-2">
+                {THUMB_COLORS.map((tc) => (
+                  <button
+                    key={tc.value}
+                    onClick={() => setForm((f) => ({ ...f, thumbnailColor: tc.value }))}
+                    className={`w-7 h-7 rounded-lg border-2 transition ${form.thumbnailColor === tc.value ? "border-amber scale-110" : "border-transparent hover:scale-105"}`}
+                    style={{ background: tc.value }}
+                    title={tc.label}
+                  />
+                ))}
+              </div>
+            </Field>
+            <Field label="Options">
+              <div className="flex gap-4 mt-1">
+                <label className="flex items-center gap-2 cursor-pointer text-[13px] text-navy">
+                  <input type="checkbox" checked={form.featured} onChange={(e) => setForm((f) => ({ ...f, featured: e.target.checked }))} className="accent-amber" />
+                  Featured
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer text-[13px] text-navy">
+                  <input type="checkbox" checked={form.isPublished} onChange={(e) => setForm((f) => ({ ...f, isPublished: e.target.checked }))} className="accent-navy" />
+                  Published
+                </label>
+              </div>
+            </Field>
+          </div>
+          {(create.isError || update.isError) && <p className="text-[12px] text-red-500 mt-3">{(create.error ?? update.error)?.message}</p>}
+          <div className="flex items-center gap-2 mt-4">
+            <PrimaryBtn onClick={saveForm} disabled={!form.title || create.isPending || update.isPending}>
+              {(create.isPending || update.isPending) ? "Saving…" : isEditing ? "Save Changes" : "Add Video"}
+            </PrimaryBtn>
+            <button onClick={() => { setShowForm(false); setEditId(null); }} className="text-[13px] text-muted hover:text-navy px-3 transition">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {!videos?.length ? <EmptyState message="No videos yet. Add your first video." /> : (
+        <DataTable
+          headers={["Thumbnail", "Title", "Category", "Duration", "Views", "Status", "Actions"]}
+          rows={videos.map((v) => [
+            <div key="th" className="w-[50px] h-[30px] rounded-[5px] flex items-center justify-center" style={{ background: `linear-gradient(135deg, ${v.thumbnailColor ?? "#15283A"}, #0d1c28)` }}>
+              <Icon name="video" size={11} className="text-white/60" />
+            </div>,
+            <div key="t">
+              <p className="text-[13px] font-medium text-navy">{v.title}</p>
+              {v.featured && <span className="text-[10px] text-amber font-semibold">★ Featured</span>}
+            </div>,
+            <span key="c" className="text-[12px] text-muted">{v.category}</span>,
+            <span key="d" className="text-[12px] text-muted">{v.duration ?? "—"}</span>,
+            <span key="vc">{v.viewCount ?? 0}</span>,
+            <span key="s" className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium border ${v.isPublished ? "bg-green-50 text-green-700 border-green-200" : "bg-surface text-muted border-border"}`}>{v.isPublished ? "Published" : "Draft"}</span>,
+            <div key="ac" className="flex gap-1.5">
+              <button onClick={() => openEdit(v)} className="inline-flex items-center gap-1 text-[11px] border border-border px-2 py-1 rounded-[5px] hover:border-navy transition"><Icon name="edit" size={11} /> Edit</button>
+              <button onClick={() => del.mutate({ id: v.id })} className="inline-flex items-center gap-1 text-[11px] border border-red-200 text-red-600 bg-red-50 px-2 py-1 rounded-[5px] hover:bg-red-100 transition"><Icon name="trash" size={11} /> Delete</button>
+            </div>,
           ])}
         />
       )}
