@@ -220,13 +220,6 @@ export default function RepDashboard() {
           </div>
 
           <div className="ml-auto flex items-center gap-2.5">
-            <button
-              onClick={() => setTab("leads")}
-              className="hidden sm:flex items-center gap-1.5 h-[34px] px-3.5 bg-amber hover:bg-[#824600] text-white text-[12px] font-semibold rounded-[8px] font-sora transition-colors"
-            >
-              <Ic d={ICON.plus as string} size={13} /> Add Lead
-            </button>
-
             <button className="relative w-[34px] h-[34px] rounded-lg border border-border bg-white flex items-center justify-center text-muted hover:border-navy transition">
               <NavIcon id="bell" />
               <span className="absolute top-[7px] right-[7px] w-1.5 h-1.5 rounded-full bg-amber border-[1.5px] border-white" />
@@ -1036,7 +1029,7 @@ function CertificationTab() {
             </svg>
           </div>
           <div>
-            <h3 className="font-sora text-[16px] font-bold text-navy">Scale360 Certified</h3>
+            <h3 className="font-sora text-[16px] font-bold text-navy">Wibiz Certified</h3>
             <p className="text-[13px] text-muted mt-0.5">
               Passed {status.passedAt ? fmtDate(status.passedAt) : ""} · Score: {status.score}/10
             </p>
@@ -1079,7 +1072,7 @@ function CertificationTab() {
   return (
     <div className="bg-white rounded-xl border border-border shadow-card">
       <div className="px-5 py-3.5 border-b border-border">
-        <p className="font-sora text-[13px] font-semibold text-navy">Scale360 Certification Quiz</p>
+        <p className="font-sora text-[13px] font-semibold text-navy">Wibiz Certification Quiz</p>
         <p className="text-[11px] text-muted mt-0.5">10 questions · 80% to pass</p>
       </div>
       <div className="p-5 space-y-5">
@@ -1118,7 +1111,7 @@ function CertificationTab() {
 function InviteTab({ repCode }: { repCode: string }) {
   const associateLink = `${window.location.origin}/join-agent?ref=${repCode}&level=Associate`;
   const agencyLink    = `${window.location.origin}/join-agent?ref=${repCode}&level=Agency`;
-  const referralLink  = `https://scale360.wibiz.ai/?ref=${repCode}`;
+  const referralLink  = `https://start.wibiz.ai/?ref=${repCode}`;
 
   return (
     <div className="space-y-4">
@@ -1131,13 +1124,13 @@ function InviteTab({ repCode }: { repCode: string }) {
         <InviteLinkCard label="Invite an Agency"    url={agencyLink} />
       </div>
       <div className="bg-white rounded-xl border border-border shadow-card p-5">
-        <p className="text-[11px] font-semibold text-muted uppercase tracking-wide mb-2">Your Scale360 Referral Link</p>
+        <p className="text-[11px] font-semibold text-muted uppercase tracking-wide mb-2">Your Wibiz Referral Link</p>
         <div className="flex items-center gap-3 bg-surface rounded-lg px-4 py-3 border border-border">
           <p className="font-mono text-[13px] text-navy break-all flex-1">{referralLink}</p>
           <CopyBtn text={referralLink} />
         </div>
         <p className="text-[11px] text-muted mt-2.5">
-          Leads visiting <span className="text-amber font-medium">scale360.wibiz.ai/?ref={repCode}</span> will be automatically attributed to you.
+          Leads visiting <span className="text-amber font-medium">start.wibiz.ai/?ref={repCode}</span> will be automatically attributed to you.
         </p>
       </div>
     </div>

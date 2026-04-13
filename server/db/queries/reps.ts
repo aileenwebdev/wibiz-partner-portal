@@ -55,7 +55,7 @@ export async function createRep(input: CreateRepInput): Promise<typeof reps.$inf
   const username = `${input.email.split("@")[0]}.${repCode.replace("WBZ-", "").toLowerCase()}`;
 
   // Referral link
-  const referralLink = `https://scale360.wibiz.ai/?ref=${repCode}`;
+  const referralLink = `https://start.wibiz.ai/?ref=${repCode}`;
 
   // Dashboard URL
   const dashboardUrl = `${env.APP_BASE_URL}/dashboard`;

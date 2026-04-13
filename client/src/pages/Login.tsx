@@ -130,7 +130,7 @@ export default function Login() {
           </p>
           <h1 className="font-sora text-[40px] font-extrabold text-white leading-[1.15] tracking-[-1px] mb-5">
             Grow your<br />
-            <span className="text-amber">Scale360</span><br />
+            <span className="text-amber">Wibiz</span><br />
             business.
           </h1>
           <p className="text-[15px] font-light text-white/50 leading-[1.7] max-w-[380px]">

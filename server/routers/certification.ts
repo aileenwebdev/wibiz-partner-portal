@@ -81,18 +81,18 @@ const QUIZ_QUESTIONS = [
   },
   {
     id: 9,
-    question: "How are referral links formatted for Scale360?",
+    question: "How are referral links formatted for Wibiz?",
     options: [
-      "https://wibiz.ai/ref/BC-360",
-      "https://scale360.wibiz.ai/?ref=BC-360",
-      "https://portal.wibiz.ai/join?agent=BC-360",
-      "https://scale360.com/?partner=BC-360",
+      "https://wibiz.ai/ref/WBZ-001",
+      "https://start.wibiz.ai/?ref=WBZ-001",
+      "https://portal.wibiz.ai/join?agent=WBZ-001",
+      "https://wibiz.com/?partner=WBZ-001",
     ],
     correct: 1,
   },
   {
     id: 10,
-    question: "What happens after an agent passes Scale360 certification?",
+    question: "What happens after an agent passes Wibiz certification?",
     options: [
       "They are automatically promoted to Agency",
       "They receive a 50% commission bonus",
@@ -146,7 +146,7 @@ export const certificationRouter = router({
       await db.insert(certifications).values({
         repId:          rep.id,
         repCode:        rep.repCode,
-        vertical:       "Scale360",
+        vertical:       "Wibiz",
         score:          correct,
         totalQuestions: 10,
         passed,

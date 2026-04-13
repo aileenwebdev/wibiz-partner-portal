@@ -71,7 +71,7 @@ export default function JoinAgent() {
           <div className="lg:col-span-2 space-y-4">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
               <h3 className="font-bold text-navy-500 text-sm mb-1">Partner Commission Rates</h3>
-              <p className="text-xs text-gray-400 mb-4">Earn on every Scale360 client you bring in.</p>
+              <p className="text-xs text-gray-400 mb-4">Earn on every Wibiz client you bring in.</p>
               <div className="space-y-2">
                 {COMMISSION_SUMMARY.map((row) => (
                   <div
