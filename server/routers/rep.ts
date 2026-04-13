@@ -21,7 +21,6 @@ import {
 import { db } from "../db/client";
 import { reps, leads, AGENT_LEVELS } from "../db/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { env } from "../env";
 
 export const repRouter = router({
   // ─── Auth ────────────────────────────────────────────────────────────────
