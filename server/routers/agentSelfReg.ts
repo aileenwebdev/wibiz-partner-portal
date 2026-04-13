@@ -17,6 +17,7 @@ import { eq, desc, and } from "drizzle-orm";
 import { getRepByCode, createRep, getFullDownline } from "../db/queries/reps";
 import { randomBytes } from "node:crypto";
 import { env } from "../env";
+import { ghlAddTags, ghlUpdateContact } from "../lib/ghl";
 
 export const agentSelfRegRouter = router({
   // ─── Public: submit registration ─────────────────────────────────────────
@@ -147,6 +148,16 @@ export const agentSelfRegRouter = router({
           reviewedAt:      new Date(),
         })
         .where(eq(agentRegistrationRequests.id, input.id));
+
+      // Write verify link + tag agent-approved in GHL
+      if (rep.ghlContactId) {
+        await ghlUpdateContact(rep.ghlContactId, { verifyLink }).catch((err) =>
+          console.error("[GHL] verifyLink write failed:", err.message)
+        );
+        await ghlAddTags(rep.ghlContactId, ["agent-approved"]).catch((err) =>
+          console.error("[GHL] tag agent-approved failed:", err.message)
+        );
+      }
 
       return { repCode: rep.repCode, verifyLink };
     }),

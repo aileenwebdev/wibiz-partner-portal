@@ -36,9 +36,12 @@ function Icon({ name, size = 15, className }: { name: string; size?: number; cla
     case "external":  return <svg {...p}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>;
     case "plus":      return <svg {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
     case "target":    return <svg {...p}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;
+    case "edit":      return <svg {...p}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
     default:          return <svg {...p}/>;
   }
 }
+
+const LEVELS = ["Associate", "Senior Associate", "Agency", "Super Team", "Super Agency"] as const;
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -245,11 +248,15 @@ export default function AdminDashboard() {
 
 // ─── Agents ───────────────────────────────────────────────────────────────────
 
+type AgentRow = { repCode: string; email: string; legalFullName?: string | null; agentLevel: string; uplineRepCode?: string | null; isActive?: boolean | null; phone?: string | null; businessName?: string | null };
+
 function AgentsTab() {
   const { data: agents, isLoading, refetch } = trpc.rep.list.useQuery({ limit: 200 });
-  const [showForm, setShowForm] = useState(false);
-  const [newAgent, setNewAgent] = useState({ email: "", legalFullName: "", agentLevel: "Associate", uplineRepCode: "" });
-  const [created, setCreated]   = useState<{ repCode: string; username: string; tempPassword: string } | null>(null);
+  const [showForm,  setShowForm]  = useState(false);
+  const [editRep,   setEditRep]   = useState<AgentRow | null>(null);
+  const [newAgent,  setNewAgent]  = useState({ email: "", legalFullName: "", agentLevel: "Associate", uplineRepCode: "" });
+  const [editData,  setEditData]  = useState({ legalFullName: "", agentLevel: "Associate", phone: "", uplineRepCode: "", notes: "" });
+  const [created,   setCreated]   = useState<{ repCode: string; username: string; tempPassword: string } | null>(null);
 
   const createRep = trpc.rep.create.useMutation({
     onSuccess: (rep) => {
@@ -260,12 +267,28 @@ function AgentsTab() {
     },
   });
 
+  const updateRep = trpc.rep.update.useMutation({
+    onSuccess: () => { setEditRep(null); refetch(); },
+  });
+
+  function openEdit(r: AgentRow) {
+    setEditRep(r);
+    setEditData({
+      legalFullName: r.legalFullName ?? "",
+      agentLevel:    r.agentLevel,
+      phone:         r.phone ?? "",
+      uplineRepCode: r.uplineRepCode ?? "",
+      notes:         "",
+    });
+    setShowForm(false);
+  }
+
   if (isLoading) return <LoadingCard />;
 
   return (
     <div className="space-y-5">
       <SectionHeader title="All Agents" count={agents?.length} action={
-        !showForm && (
+        !showForm && !editRep && (
           <PrimaryBtn onClick={() => setShowForm(true)}>
             <Icon name="plus" size={13} /> New Agent
           </PrimaryBtn>
@@ -274,14 +297,14 @@ function AgentsTab() {
 
       {/* Credentials banner */}
       {created && (
-        <div className="bg-green-50 border border-green-200 rounded-[12px] p-4 text-sm">
-          <p className="font-semibold text-green-800 mb-3">Agent created — share these credentials:</p>
+        <div className="bg-green-50 border border-green-200 rounded-[12px] p-4">
+          <p className="font-semibold text-green-800 text-[13px] mb-3">Agent created — share these credentials:</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <CredField label="Rep Code"      value={created.repCode} />
             <CredField label="Username"      value={created.username} />
             <CredField label="Temp Password" value={created.tempPassword} />
           </div>
-          <p className="text-green-600 text-xs mt-3">Agent should change their password on first login.</p>
+          <p className="text-green-600 text-xs mt-3">Agent must change their password on first login.</p>
           <button onClick={() => setCreated(null)} className="mt-2 text-xs text-green-500 underline hover:text-green-700 transition">Dismiss</button>
         </div>
       )}
@@ -305,7 +328,7 @@ function AgentsTab() {
               <select value={newAgent.agentLevel}
                 onChange={(e) => setNewAgent((f) => ({ ...f, agentLevel: e.target.value }))}
                 className={inputCls}>
-                {["Associate", "Senior Associate", "Agency", "Super Team", "Super Agency"].map((l) => <option key={l}>{l}</option>)}
+                {LEVELS.map((l) => <option key={l}>{l}</option>)}
               </select>
             </Field>
             <Field label="Upline Rep Code">
@@ -314,17 +337,10 @@ function AgentsTab() {
                 className={inputCls} placeholder="WBZ-001" />
             </Field>
           </div>
-          {createRep.isError && (
-            <p className="text-[12px] text-red-500 mt-3">{createRep.error.message}</p>
-          )}
+          {createRep.isError && <p className="text-[12px] text-red-500 mt-3">{createRep.error.message}</p>}
           <div className="flex items-center gap-2 mt-4">
             <PrimaryBtn
-              onClick={() => createRep.mutate({
-                email: newAgent.email,
-                legalFullName: newAgent.legalFullName || undefined,
-                agentLevel: newAgent.agentLevel as any,
-                uplineRepCode: newAgent.uplineRepCode || undefined,
-              })}
+              onClick={() => createRep.mutate({ email: newAgent.email, legalFullName: newAgent.legalFullName || undefined, agentLevel: newAgent.agentLevel as any, uplineRepCode: newAgent.uplineRepCode || undefined })}
               disabled={!newAgent.email || createRep.isPending}
             >
               {createRep.isPending ? "Creating…" : "Create Agent"}
@@ -334,8 +350,56 @@ function AgentsTab() {
         </div>
       )}
 
+      {/* Edit form */}
+      {editRep && (
+        <div className="bg-white rounded-[12px] border border-amber/40 shadow-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-sora font-semibold text-navy text-[13px]">
+              Edit Agent — <RepCodePill>{editRep.repCode}</RepCodePill>
+            </h3>
+            <button onClick={() => setEditRep(null)} className="text-muted hover:text-navy transition">
+              <Icon name="x" size={15} />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Full Name">
+              <input type="text" value={editData.legalFullName}
+                onChange={(e) => setEditData((f) => ({ ...f, legalFullName: e.target.value }))}
+                className={inputCls} placeholder="Jane Smith" />
+            </Field>
+            <Field label="Phone">
+              <input type="text" value={editData.phone}
+                onChange={(e) => setEditData((f) => ({ ...f, phone: e.target.value }))}
+                className={inputCls} placeholder="+1 555 000 0000" />
+            </Field>
+            <Field label="Agent Level">
+              <select value={editData.agentLevel}
+                onChange={(e) => setEditData((f) => ({ ...f, agentLevel: e.target.value }))}
+                className={inputCls}>
+                {LEVELS.map((l) => <option key={l}>{l}</option>)}
+              </select>
+            </Field>
+            <Field label="Upline Rep Code">
+              <input type="text" value={editData.uplineRepCode}
+                onChange={(e) => setEditData((f) => ({ ...f, uplineRepCode: e.target.value }))}
+                className={inputCls} placeholder="WBZ-001" />
+            </Field>
+          </div>
+          {updateRep.isError && <p className="text-[12px] text-red-500 mt-3">{updateRep.error.message}</p>}
+          <div className="flex items-center gap-2 mt-4">
+            <PrimaryBtn
+              onClick={() => updateRep.mutate({ repCode: editRep.repCode, legalFullName: editData.legalFullName || undefined, phone: editData.phone || undefined, agentLevel: editData.agentLevel as any, uplineRepCode: editData.uplineRepCode || undefined })}
+              disabled={updateRep.isPending}
+            >
+              {updateRep.isPending ? "Saving…" : "Save Changes"}
+            </PrimaryBtn>
+            <button onClick={() => setEditRep(null)} className="text-[13px] text-muted hover:text-navy px-3 transition">Cancel</button>
+          </div>
+        </div>
+      )}
+
       <DataTable
-        headers={["Rep Code", "Name", "Level", "Email", "Upline", "Status"]}
+        headers={["Rep Code", "Name", "Level", "Email", "Upline", "Status", "Actions"]}
         rows={(agents ?? []).map((r) => [
           <RepCodePill key="rc">{r.repCode}</RepCodePill>,
           r.legalFullName ?? <span className="text-light">—</span>,
@@ -343,6 +407,24 @@ function AgentsTab() {
           <span key="em" className="text-muted">{r.email}</span>,
           r.uplineRepCode ? <RepCodePill key="up">{r.uplineRepCode}</RepCodePill> : <span className="text-light">—</span>,
           <ActiveBadge key="ab" active={!!r.isActive} />,
+          <div key="ac" className="flex gap-1.5">
+            <button
+              onClick={() => openEdit(r as AgentRow)}
+              className="inline-flex items-center gap-1 text-[11px] text-navy border border-border bg-white px-2 py-1 rounded-[5px] hover:border-navy transition"
+            >
+              <Icon name="edit" size={11} /> Edit
+            </button>
+            <button
+              onClick={() => updateRep.mutate({ repCode: r.repCode, isActive: !r.isActive })}
+              className={`inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-[5px] border transition ${
+                r.isActive
+                  ? "text-red-600 border-red-200 bg-red-50 hover:bg-red-100"
+                  : "text-green-700 border-green-200 bg-green-50 hover:bg-green-100"
+              }`}
+            >
+              {r.isActive ? "Deactivate" : "Activate"}
+            </button>
+          </div>,
         ])}
       />
     </div>
@@ -527,32 +609,112 @@ function WebhooksTab() {
 
 function VerificationsTab() {
   const { data: sessions, isLoading, refetch } = trpc.agentVerification.list.useQuery();
-  const review = trpc.agentVerification.review.useMutation({ onSuccess: () => refetch() });
+  const review   = trpc.agentVerification.review.useMutation({ onSuccess: () => refetch() });
+  const genLink  = trpc.agentVerification.generateLink.useMutation({
+    onSuccess: (data) => { setGeneratedLink(data.verifyLink); refetch(); },
+  });
+
+  const [linkRepCode,   setLinkRepCode]   = useState("");
+  const [generatedLink, setGeneratedLink] = useState("");
+  const [copied,        setCopied]        = useState(false);
+
+  function copyLink(url: string) {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   if (isLoading) return <LoadingCard />;
 
   return (
     <div className="space-y-5">
-      <SectionHeader title="ID Verification" />
-      <DataTable
-        headers={["Rep Code", "Status", "Document", "Actions"]}
-        rows={(sessions ?? []).map((s) => [
-          <RepCodePill key="rc">{s.repCode}</RepCodePill>,
-          <StatusBadge key="s" status={s.status} />,
-          s.documentUrl
-            ? <a key="doc" href={s.documentUrl} target="_blank" rel="noreferrer"
-                className="inline-flex items-center gap-1 text-[12px] text-amber hover:opacity-75 transition">
-                View <Icon name="external" size={11} />
-              </a>
-            : <span key="na" className="text-light text-xs">—</span>,
-          s.status === "submitted" ? (
-            <div key="ac" className="flex gap-2">
-              <ApproveBtn onClick={() => review.mutate({ repCode: s.repCode, status: "approved" })} />
-              <RejectBtn  onClick={() => review.mutate({ repCode: s.repCode, status: "rejected" })} />
-            </div>
-          ) : <span key="na" className="text-light text-xs">—</span>,
-        ])}
+      <SectionHeader
+        title="ID Verification"
+        subtitle="Agents verify their identity via a secure token link"
       />
+
+      {/* Generate / Resend link panel */}
+      <div className="bg-white rounded-[12px] border border-border shadow-card p-5">
+        <p className="font-sora font-semibold text-navy text-[13px] mb-1">Send Verification Link</p>
+        <p className="text-[12px] text-muted mb-4">
+          Enter a rep code to generate a 7-day verification link. Paste it into GHL or send directly to the agent.
+          The link is also automatically written to the agent's GHL custom field <code className="bg-surface px-1 rounded text-[11px]">verify_link</code>.
+        </p>
+        <div className="flex gap-2 flex-wrap">
+          <input
+            type="text"
+            placeholder="WBZ-001"
+            value={linkRepCode}
+            onChange={(e) => setLinkRepCode(e.target.value.toUpperCase())}
+            className="border border-border rounded-[8px] px-3 h-[34px] text-[13px] text-navy bg-surface placeholder-light outline-none focus:border-amber focus:shadow-[0_0_0_3px_rgba(255,137,0,0.12)] w-36 font-dm"
+          />
+          <PrimaryBtn
+            onClick={() => { if (linkRepCode) { genLink.mutate({ repCode: linkRepCode }); } }}
+            disabled={!linkRepCode || genLink.isPending}
+          >
+            {genLink.isPending ? "Generating…" : "Generate Link"}
+          </PrimaryBtn>
+        </div>
+        {genLink.isError && (
+          <p className="text-[12px] text-red-500 mt-2">{genLink.error.message}</p>
+        )}
+        {generatedLink && (
+          <div className="mt-3 flex items-center gap-2 bg-surface border border-border rounded-[8px] px-3 py-2">
+            <span className="font-mono text-[12px] text-navy flex-1 truncate">{generatedLink}</span>
+            <button
+              onClick={() => copyLink(generatedLink)}
+              className="flex items-center gap-1 text-[11px] font-medium text-amber hover:opacity-75 transition shrink-0"
+            >
+              <Icon name="copy" size={12} />
+              {copied ? "Copied!" : "Copy"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Sessions table */}
+      {!sessions?.length ? (
+        <EmptyState message="No verification sessions yet." />
+      ) : (
+        <DataTable
+          headers={["Rep Code", "Status", "Verify Link", "Document", "Submitted", "Actions"]}
+          rows={sessions.map((s) => [
+            <RepCodePill key="rc">{s.repCode}</RepCodePill>,
+            <StatusBadge key="s" status={s.status} />,
+            <button
+              key="vl"
+              onClick={() => copyLink(s.verifyLink)}
+              className="inline-flex items-center gap-1 text-[11px] text-amber hover:opacity-75 transition font-medium max-w-[160px]"
+              title={s.verifyLink}
+            >
+              <Icon name="copy" size={11} />
+              Copy link
+            </button>,
+            s.documentUrl
+              ? <a key="doc" href={s.documentUrl} target="_blank" rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-[12px] text-amber hover:opacity-75 transition">
+                  View <Icon name="external" size={11} />
+                </a>
+              : <span key="na" className="text-light text-xs">—</span>,
+            s.createdAt ? new Date(s.createdAt).toLocaleDateString() : "—",
+            s.status === "submitted" ? (
+              <div key="ac" className="flex gap-2">
+                <ApproveBtn onClick={() => review.mutate({ repCode: s.repCode, status: "approved" })} />
+                <RejectBtn  onClick={() => review.mutate({ repCode: s.repCode, status: "rejected" })} />
+              </div>
+            ) : (
+              <button
+                key="re"
+                onClick={() => genLink.mutate({ repCode: s.repCode })}
+                className="text-[11px] text-muted border border-border px-2 py-1 rounded-[5px] hover:border-navy transition"
+              >
+                Resend
+              </button>
+            ),
+          ])}
+        />
+      )}
     </div>
   );
 }

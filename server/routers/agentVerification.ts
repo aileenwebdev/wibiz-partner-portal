@@ -9,9 +9,10 @@ import { router, publicProcedure, adminProcedure } from "./trpc";
 import { db } from "../db/client";
 import { agentVerificationSessions, reps } from "../db/schema";
 import { eq } from "drizzle-orm";
-import { updateRep } from "../db/queries/reps";
+import { updateRep, getRepByCode } from "../db/queries/reps";
 import { randomBytes } from "node:crypto";
 import { env } from "../env";
+import { ghlAddTags, ghlUpdateContact } from "../lib/ghl";
 
 export const agentVerificationRouter = router({
   // Admin generates a new verify link for a rep
@@ -32,6 +33,13 @@ export const agentVerificationRouter = router({
         token,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
+
+      // Write verify link to GHL so automation can email it
+      if (rep.ghlContactId) {
+        await ghlUpdateContact(rep.ghlContactId, { verifyLink }).catch((err) =>
+          console.error("[GHL] verifyLink write failed:", err.message)
+        );
+      }
 
       return { verifyLink, token };
     }),
@@ -71,12 +79,24 @@ export const agentVerificationRouter = router({
 
       await updateRep(session.repCode, { identityVerificationStatus: "submitted" });
 
+      // Tag in GHL so automation can notify admin
+      const rep = await getRepByCode(session.repCode);
+      if (rep?.ghlContactId) {
+        await ghlAddTags(rep.ghlContactId, ["agent-id-submitted"]).catch((err) =>
+          console.error("[GHL] tag agent-id-submitted failed:", err.message)
+        );
+      }
+
       return { ok: true };
     }),
 
-  // Admin: list all sessions
+  // Admin: list all sessions (with constructed verify link)
   list: adminProcedure.query(async () => {
-    return db.query.agentVerificationSessions.findMany();
+    const sessions = await db.query.agentVerificationSessions.findMany();
+    return sessions.map((s) => ({
+      ...s,
+      verifyLink: `${env.APP_BASE_URL}/agent-verify?token=${s.token}`,
+    }));
   }),
 
   // Admin: approve/reject identity
@@ -93,6 +113,16 @@ export const agentVerificationRouter = router({
         identityVerificationStatus: input.status,
         identityVerificationNotes:  input.notes,
       });
+
+      // Tag in GHL for automation
+      const rep = await getRepByCode(input.repCode);
+      if (rep?.ghlContactId) {
+        const tag = input.status === "approved" ? "agent-verified" : "agent-id-rejected";
+        await ghlAddTags(rep.ghlContactId, [tag]).catch((err) =>
+          console.error(`[GHL] tag ${tag} failed:`, err.message)
+        );
+      }
+
       return { ok: true };
     }),
 });
