@@ -66,9 +66,9 @@ export function extractRepCode(payload: Record<string, unknown>): RepCodeMatch |
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** BC-360 format — case-insensitive, normalised to uppercase */
+/** Rep code format: 2–6 uppercase letters, dash, 1+ digits. e.g. BC-360, WBZ-001, WBZ-123 */
 function isValidRepCode(val: string): boolean {
-  return /^BC-\d+$/i.test(val.trim());
+  return /^[A-Z]{2,6}-\d+$/i.test(val.trim());
 }
 
 /** Explicitly exclude sentinel strings that mean "no value" */

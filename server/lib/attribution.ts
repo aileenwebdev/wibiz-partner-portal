@@ -125,10 +125,12 @@ export async function resolveAttribution(
     contactId: rep.ghlContactId ?? null,
   });
 
-  // Step 4 — write back to GHL (phone + contactId included)
-  if (ghlContactId) {
+  // Step 4 — write back to GHL (use payload contactId, or fall back to DB lead's contactId)
+  const lead = await db.query.leads.findFirst({ where: eq(leads.id, leadId!) });
+  const writeBackContactId = ghlContactId || lead?.ghlContactId || null;
+  if (writeBackContactId) {
     await ghlWriteAttribution(
-      ghlContactId,
+      writeBackContactId,
       rep.repCode,
       rep.legalFullName ?? rep.email,
       rep.email,
@@ -136,6 +138,8 @@ export async function resolveAttribution(
       rep.phone ?? null,
       rep.ghlContactId ?? null,
     ).catch((err) => console.error("[GHL] Write-back failed:", err.message));
+  } else {
+    console.warn("[Attribution] No ghlContactId available for write-back — lead:", leadId, "email:", String(payload.email ?? ""));
   }
 
   // Step 5 — log
