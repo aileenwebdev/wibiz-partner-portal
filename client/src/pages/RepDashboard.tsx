@@ -3,7 +3,7 @@
  */
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { trpc } from "../lib/trpc";
 import { COMMISSION_SUMMARY } from "../lib/constants";
 import { Menu, X, LogOut, Users, DollarSign, Award, Link2, BarChart2 } from "lucide-react";
@@ -24,9 +24,7 @@ export default function RepDashboard() {
   const [tab, setTab]     = useState<Tab>("overview");
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const { data: me, isLoading } = trpc.rep.me.useQuery(undefined, {
-    onError: () => navigate("/login"),
-  });
+  const { data: me, isLoading } = trpc.rep.me.useQuery();
   const logout = trpc.rep.logout.useMutation({ onSuccess: () => navigate("/login") });
 
   if (isLoading) return (
@@ -189,15 +187,54 @@ function OverviewTab({ me }: { me: { repCode: string; agentLevel: string; email:
 // ─── Leads ────────────────────────────────────────────────────────────────────
 
 function LeadsTab() {
+  const { data: myLeads, isLoading } = trpc.rep.myLeads.useQuery();
+
+  if (isLoading) return <LoadingCard />;
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
-      <div className="w-12 h-12 bg-navy-50 rounded-full flex items-center justify-center mx-auto mb-3">
-        <Users size={22} className="text-navy-400" />
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-gray-100">
+        <h3 className="font-bold text-navy-500 text-sm">My Attributed Leads</h3>
       </div>
-      <h3 className="font-semibold text-navy-500 mb-1">Leads are tracked via GHL</h3>
-      <p className="text-sm text-gray-400 max-w-xs mx-auto">
-        Attribution is captured automatically through your referral link. View your pipeline directly in GHL.
-      </p>
+      {!myLeads?.length ? (
+        <div className="p-8 text-center">
+          <div className="w-12 h-12 bg-navy-50 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Users size={22} className="text-navy-400" />
+          </div>
+          <p className="text-sm text-gray-400 max-w-xs mx-auto">No leads yet. Share your referral link to start attributing leads.</p>
+        </div>
+      ) : (
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">Name</th>
+              <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">Email</th>
+              <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">Stage</th>
+              <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">Attribution</th>
+              <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            {myLeads.map((lead) => (
+              <tr key={lead.id} className="border-t border-gray-50 hover:bg-gray-50">
+                <td className="px-4 py-3 text-navy-500 font-medium">
+                  {[lead.firstName, lead.lastName].filter(Boolean).join(" ") || lead.email || "—"}
+                </td>
+                <td className="px-4 py-3 text-gray-400 text-xs">{lead.email || "—"}</td>
+                <td className="px-4 py-3 text-gray-500 capitalize text-xs">
+                  {lead.currentStage?.replace(/_/g, " ") || "—"}
+                </td>
+                <td className="px-4 py-3">
+                  <AttributionBadge status={lead.attributionStatus ?? "unresolved"} />
+                </td>
+                <td className="px-4 py-3 text-gray-400 text-xs">
+                  {lead.createdAt ? new Date(lead.createdAt).toLocaleDateString() : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
@@ -449,6 +486,24 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <span className={`text-xs px-2 py-0.5 rounded-full capitalize border font-medium ${map[status] ?? "bg-gray-50 text-gray-500 border-gray-200"}`}>
       {status}
+    </span>
+  );
+}
+
+function AttributionBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    resolved:    "bg-green-100 text-green-700",
+    unresolved:  "bg-yellow-100 text-yellow-700",
+    no_rep_code: "bg-gray-100 text-gray-500",
+  };
+  const labels: Record<string, string> = {
+    resolved:    "Attributed",
+    unresolved:  "Unresolved",
+    no_rep_code: "No Code",
+  };
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded-full ${map[status] ?? "bg-gray-100 text-gray-500"}`}>
+      {labels[status] ?? status}
     </span>
   );
 }

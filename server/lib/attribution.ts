@@ -20,7 +20,7 @@ import {
 } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { extractRepCode } from "./repCode";
-import { ghlGetContact, ghlWriteAttribution } from "./ghl";
+import { ghlGetContact, ghlWriteAttribution, ghlAddTags } from "./ghl";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -67,6 +67,13 @@ export async function resolveAttribution(
   // Step 1 — extract rep code
   const match = extractRepCode(payload as Record<string, unknown>);
 
+  // Tag every inbound contact as "lead" (idempotent — GHL ignores duplicate tags)
+  if (ghlContactId) {
+    await ghlAddTags(ghlContactId, ["lead"]).catch((err) =>
+      console.error("[GHL] Tag lead failed:", err.message)
+    );
+  }
+
   if (!match) {
     // No rep code found at all — log and return
     const leadId = await upsertLead(ghlContactId, payload, null, null);
@@ -103,17 +110,24 @@ export async function resolveAttribution(
     return { status: "unresolved", leadId, repCode: match.code, repId: null, matchedField: match.field };
   }
 
-  // Step 3 — upsert lead
-  const leadId = await upsertLead(ghlContactId, payload, match.code, rep.id);
+  // Step 3 — upsert lead with full referrer info
+  const leadId = await upsertLead(ghlContactId, payload, match.code, rep.id, {
+    name:      rep.legalFullName ?? rep.email,
+    email:     rep.email,
+    phone:     rep.phone ?? null,
+    contactId: rep.ghlContactId ?? null,
+  });
 
-  // Step 4 — write back to GHL
+  // Step 4 — write back to GHL (phone + contactId included)
   if (ghlContactId) {
     await ghlWriteAttribution(
       ghlContactId,
       rep.repCode,
       rep.legalFullName ?? rep.email,
       rep.email,
-      "resolved"
+      "resolved",
+      rep.phone ?? null,
+      rep.ghlContactId ?? null,
     ).catch((err) => console.error("[GHL] Write-back failed:", err.message));
   }
 
@@ -133,11 +147,19 @@ export async function resolveAttribution(
 
 // ─── Lead Upsert ─────────────────────────────────────────────────────────────
 
+interface LeadReferrer {
+  name: string;
+  email: string;
+  phone?: string | null;
+  contactId?: string | null;
+}
+
 async function upsertLead(
   ghlContactId: string,
   payload: InboundLeadPayload,
   repCode: string | null,
-  repId: number | null
+  repId: number | null,
+  referrer?: LeadReferrer,
 ): Promise<number | null> {
   if (!ghlContactId) return null;
 
@@ -145,23 +167,33 @@ async function upsertLead(
     where: eq(leads.ghlContactId, ghlContactId),
   });
 
-  const firstName = String(payload.firstName ?? payload.first_name ?? "");
-  const lastName  = String(payload.lastName  ?? payload.last_name  ?? "");
-  const email     = String(payload.email ?? "");
-  const phone     = String(payload.phone ?? "");
+  const firstName    = String(payload.firstName ?? payload.first_name ?? "");
+  const lastName     = String(payload.lastName  ?? payload.last_name  ?? "");
+  const email        = String(payload.email ?? "");
+  const phone        = String(payload.phone ?? "");
   const businessName = String(payload.businessName ?? payload.company_name ?? "");
 
+  const newStatus: "resolved" | "unresolved" | "no_rep_code" =
+    repId ? "resolved" : repCode ? "unresolved" : "no_rep_code";
+
   if (existing) {
-    // Update attribution fields only — don't clobber contact data
-    await db
-      .update(leads)
-      .set({
-        repCode:          repCode ?? existing.repCode,
-        repId:            repId   ?? existing.repId,
-        attributionStatus: repId ? "resolved" : repCode ? "unresolved" : "no_rep_code",
-        updatedAt:        new Date(),
-      })
-      .where(eq(leads.id, existing.id));
+    // Don't downgrade a resolved attribution to unresolved/no_rep_code
+    const keepExisting = existing.attributionStatus === "resolved" && existing.repId && !repId;
+
+    const update: Record<string, unknown> = {
+      repCode:          repCode ?? existing.repCode,
+      repId:            repId   ?? existing.repId,
+      attributionStatus: keepExisting ? existing.attributionStatus : newStatus,
+      updatedAt:        new Date(),
+    };
+
+    // Only write referrer details if this event resolves them (don't blank out existing)
+    if (referrer?.name)      update.referrerAgentName      = referrer.name;
+    if (referrer?.email)     update.referrerAgentEmail     = referrer.email;
+    if (referrer?.phone)     update.referrerAgentPhone     = referrer.phone;
+    if (referrer?.contactId) update.referrerAgentContactId = referrer.contactId;
+
+    await db.update(leads).set(update as any).where(eq(leads.id, existing.id));
     return existing.id;
   }
 
@@ -175,7 +207,11 @@ async function upsertLead(
     email,
     phone,
     businessName,
-    attributionStatus: repId ? "resolved" : repCode ? "unresolved" : "no_rep_code",
+    referrerAgentName:      referrer?.name      ?? undefined,
+    referrerAgentEmail:     referrer?.email     ?? undefined,
+    referrerAgentPhone:     referrer?.phone     ?? undefined,
+    referrerAgentContactId: referrer?.contactId ?? undefined,
+    attributionStatus:      newStatus,
   });
 
   return (result as { insertId: number }).insertId ?? null;
@@ -259,12 +295,14 @@ export async function manuallyAssignRep(leadId: number, repCode: string): Promis
   await db
     .update(leads)
     .set({
-      repCode:          rep.repCode,
-      repId:            rep.id,
-      referrerAgentName:  rep.legalFullName ?? rep.email,
-      referrerAgentEmail: rep.email,
-      attributionStatus: "resolved",
-      updatedAt: new Date(),
+      repCode:               rep.repCode,
+      repId:                 rep.id,
+      referrerAgentName:     rep.legalFullName ?? rep.email,
+      referrerAgentEmail:    rep.email,
+      referrerAgentPhone:    rep.phone    ?? undefined,
+      referrerAgentContactId: rep.ghlContactId ?? undefined,
+      attributionStatus:     "resolved",
+      updatedAt:             new Date(),
     })
     .where(eq(leads.id, leadId));
 
@@ -283,7 +321,9 @@ export async function manuallyAssignRep(leadId: number, repCode: string): Promis
       rep.repCode,
       rep.legalFullName ?? rep.email,
       rep.email,
-      "resolved"
+      "resolved",
+      rep.phone    ?? null,
+      rep.ghlContactId ?? null,
     ).catch(console.error);
   }
 }

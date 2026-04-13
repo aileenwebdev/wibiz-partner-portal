@@ -9,7 +9,7 @@ import { eq, like, and, or, isNull, desc, asc, ne } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { randomBytes } from "node:crypto";
 import { env } from "../../env";
-import { fireMakeWebhook, ghlCreateContact } from "../../lib/ghl";
+import { fireMakeWebhook, ghlCreateContact, ghlAddTags } from "../../lib/ghl";
 
 // ─── Rep Code Generator ───────────────────────────────────────────────────────
 
@@ -60,7 +60,7 @@ export async function createRep(input: CreateRepInput): Promise<typeof reps.$inf
   // Dashboard URL
   const dashboardUrl = `${env.APP_BASE_URL}/dashboard`;
 
-  // 1. Create GHL contact
+  // 1. Create GHL contact and tag as agent
   let ghlContactId: string | undefined;
   try {
     ghlContactId = await ghlCreateContact({
@@ -74,6 +74,11 @@ export async function createRep(input: CreateRepInput): Promise<typeof reps.$inf
       mgaRepCode,
       dashboardUrl,
     });
+    if (ghlContactId) {
+      await ghlAddTags(ghlContactId, ["agent"]).catch((err) =>
+        console.error("[GHL] Tag agent failed:", err.message)
+      );
+    }
   } catch (err) {
     console.error("[GHL] Failed to create contact for rep:", err);
   }

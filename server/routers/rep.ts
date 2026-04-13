@@ -19,8 +19,8 @@ import {
   setRepPassword,
 } from "../db/queries/reps";
 import { db } from "../db/client";
-import { reps, AGENT_LEVELS } from "../db/schema";
-import { desc } from "drizzle-orm";
+import { reps, leads, AGENT_LEVELS } from "../db/schema";
+import { eq, desc } from "drizzle-orm";
 
 export const repRouter = router({
   // ─── Auth ────────────────────────────────────────────────────────────────
@@ -75,6 +75,16 @@ export const repRouter = router({
       await setRepPassword(ctx.repCode, input.newPassword);
       return { ok: true };
     }),
+
+  // ─── Leads ───────────────────────────────────────────────────────────────
+
+  myLeads: authedProcedure.query(async ({ ctx }) => {
+    return db.query.leads.findMany({
+      where: eq(leads.repCode, ctx.repCode),
+      orderBy: [desc(leads.createdAt)],
+      limit: 50,
+    });
+  }),
 
   // ─── Hierarchy ───────────────────────────────────────────────────────────
 

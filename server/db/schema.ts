@@ -113,6 +113,8 @@ export const leads = mysqlTable(
     // Attribution resolved fields
     referrerAgentName: varchar("referrer_agent_name", { length: 255 }),
     referrerAgentEmail: varchar("referrer_agent_email", { length: 255 }),
+    referrerAgentPhone: varchar("referrer_agent_phone", { length: 30 }),
+    referrerAgentContactId: varchar("referrer_agent_contact_id", { length: 100 }),
     attributionStatus: mysqlEnum("attribution_status", ["resolved", "unresolved", "no_rep_code"]).default("unresolved"),
 
     // Scale360 audit results

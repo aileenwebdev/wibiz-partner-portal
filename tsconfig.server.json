@@ -3,10 +3,10 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "CommonJS",
+    "moduleResolution": "node",
     "target": "ES2022"
   },
-  "include": ["server/**/*", "scripts/**/*"],
+  "include": ["server/**/*"],
   "exclude": ["node_modules", "dist", "client"]
 }

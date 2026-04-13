@@ -19,6 +19,12 @@ export interface RepCodeMatch {
 export function extractRepCode(payload: Record<string, unknown>): RepCodeMatch | null {
   const customFields = flattenCustomFields(payload);
 
+  // Case-insensitive map of root-level payload keys — handles REF_ID, Rep_Code, etc.
+  const rootCI: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(payload)) {
+    rootCI[k.toLowerCase()] = v;
+  }
+
   // Priority-ordered alias list
   const directAliases: string[] = [
     "rep_code",
@@ -33,9 +39,10 @@ export function extractRepCode(payload: Record<string, unknown>): RepCodeMatch |
   ];
 
   for (const alias of directAliases) {
-    const val = customFields[alias] ?? (payload as Record<string, unknown>)[alias];
-    if (val && isValidRepCode(String(val))) {
-      return { code: normalizeRepCode(String(val)), field: alias };
+    const raw = customFields[alias] ?? rootCI[alias];
+    const val = raw != null ? String(raw).trim() : "";
+    if (val && !isNoneValue(val) && isValidRepCode(val)) {
+      return { code: normalizeRepCode(val), field: alias };
     }
   }
 
@@ -62,6 +69,11 @@ export function extractRepCode(payload: Record<string, unknown>): RepCodeMatch |
 /** BC-360 format — case-insensitive, normalised to uppercase */
 function isValidRepCode(val: string): boolean {
   return /^BC-\d+$/i.test(val.trim());
+}
+
+/** Explicitly exclude sentinel strings that mean "no value" */
+function isNoneValue(val: string): boolean {
+  return ["none", "null", "undefined", "n/a", "-"].includes(val.toLowerCase());
 }
 
 function normalizeRepCode(val: string): string {

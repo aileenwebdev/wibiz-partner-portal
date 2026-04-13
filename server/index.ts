@@ -8,6 +8,7 @@ import path from "path";
 import express from "express";
 import cors from "cors";
 import session from "express-session";
+import MySQLStoreFactory from "express-mysql-session";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "./routers";
 import { createContext } from "./routers/trpc";
@@ -28,16 +29,33 @@ app.use(cors({
   credentials: true,
 }));
 
+// ─── Body parsing ─────────────────────────────────────────────────────────────
+
 // Raw body for signature verification (webhook routes must be registered before json())
 app.use("/api/scale360/kickstart", express.raw({ type: "application/json" }));
-
 app.use(express.json({ limit: "2mb" }));
+
+// ─── Session (MySQL-backed) ───────────────────────────────────────────────────
+
+const MySQLStore = MySQLStoreFactory(session as Parameters<typeof MySQLStoreFactory>[0]);
+const dbUrl = new URL(env.DATABASE_URL);
+const sessionStore = new MySQLStore({
+  host:                    dbUrl.hostname,
+  port:                    parseInt(dbUrl.port || "3306"),
+  user:                    dbUrl.username,
+  password:                dbUrl.password,
+  database:                dbUrl.pathname.slice(1),
+  clearExpired:            true,
+  checkExpirationInterval: 15 * 60 * 1000,
+  expiration:              7 * 24 * 60 * 60 * 1000,
+});
 
 app.use(
   session({
     secret:            env.SESSION_SECRET,
     resave:            false,
     saveUninitialized: false,
+    store:             sessionStore,
     cookie: {
       secure:   env.APP_BASE_URL.startsWith("https"),
       httpOnly: true,
@@ -71,7 +89,7 @@ app.use(
 
 app.get("/health", (_, res) => res.json({ ok: true }));
 
-// ─── Static (client build) ────────────────────────────────────────────────────
+// ─── SPA fallback ─────────────────────────────────────────────────────────────
 
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(process.cwd(), "client/dist")));

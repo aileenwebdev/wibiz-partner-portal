@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   root: "client",
   build: {
-    outDir: "../client/dist",
+    outDir: path.resolve(__dirname, "client/dist"),
     emptyOutDir: true,
     rollupOptions: {
       // Prevent Rollup from trying to bundle server-side modules.

@@ -43,14 +43,16 @@ export const GHL_CALENDARS = {
 // Used for both reading inbound payloads and writing back to contacts.
 export const GHL_FIELDS = {
   // Attribution write-back
-  repCode:             "rep_code",
-  bc360AgentId:        "bc360_agent_id",
-  agentLevel:          "agent_level",
-  uplineRepCode:       "upline_rep_code",
-  mgaRepCode:          "mga_rep_code",
-  referrerAgentEmail:  "referrer_agent_email",
-  referrerAgentName:   "referrer_agent_name",
-  attributionStatus:   "attribution_status",
+  repCode:                "rep_code",
+  bc360AgentId:           "bc360_agent_id",
+  agentLevel:             "agent_level",
+  uplineRepCode:          "upline_rep_code",
+  mgaRepCode:             "mga_rep_code",
+  referrerAgentEmail:     "referrer_agent_email",
+  referrerAgentName:      "referrer_agent_name",
+  referrerAgentPhone:     "referrer_agent_phone",
+  referrerAgentContactId: "referrer_agent_contact_id",
+  attributionStatus:      "attribution_status",
 
   // Upline info (for downline GHL contacts)
   uplineName:          "upline_name",
@@ -102,9 +104,11 @@ export interface GhlContactInput {
   dashboardUrl?:    string;
   verifyLink?:      string;
   // Attribution fields
-  referrerAgentEmail?: string;
-  referrerAgentName?:  string;
-  attributionStatus?:  string;
+  referrerAgentEmail?:     string;
+  referrerAgentName?:      string;
+  referrerAgentPhone?:     string;
+  referrerAgentContactId?: string;
+  attributionStatus?:      string;
 }
 
 export async function ghlCreateContact(input: GhlContactInput): Promise<string> {
@@ -146,14 +150,25 @@ export async function ghlWriteAttribution(
   repCode: string,
   agentName: string,
   agentEmail: string,
-  status: "resolved" | "unresolved" | "no_rep_code"
+  status: "resolved" | "unresolved" | "no_rep_code",
+  agentPhone?: string | null,
+  agentContactId?: string | null,
 ): Promise<void> {
   await ghlUpdateContact(ghlContactId, {
-    referrerAgentName:  agentName,
-    referrerAgentEmail: agentEmail,
-    attributionStatus:  status,
+    referrerAgentName:      agentName,
+    referrerAgentEmail:     agentEmail,
+    referrerAgentPhone:     agentPhone    ?? undefined,
+    referrerAgentContactId: agentContactId ?? undefined,
+    attributionStatus:      status,
     repCode,
   });
+}
+
+// ─── Tags ─────────────────────────────────────────────────────────────────────
+
+/** Add tags to a GHL contact without replacing existing ones */
+export async function ghlAddTags(ghlContactId: string, tags: string[]): Promise<void> {
+  await ghlApi.post(`/contacts/${ghlContactId}/tags`, { tags });
 }
 
 // ─── Upline Sync ──────────────────────────────────────────────────────────────
@@ -190,16 +205,18 @@ export async function fireMakeWebhook(event: string, data: unknown): Promise<voi
 
 function buildCustomFields(input: GhlContactInput): Array<{ key: string; field_value: string }> {
   const map: Array<[keyof typeof GHL_FIELDS, string | undefined]> = [
-    ["repCode",            input.repCode],
-    ["agentLevel",         input.agentLevel],
-    ["uplineRepCode",      input.uplineRepCode],
-    ["uplineName",         input.uplineName],
-    ["mgaRepCode",         input.mgaRepCode],
-    ["dashboardUrl",       input.dashboardUrl],
-    ["verifyLink",         input.verifyLink],
-    ["referrerAgentEmail", input.referrerAgentEmail],
-    ["referrerAgentName",  input.referrerAgentName],
-    ["attributionStatus",  input.attributionStatus],
+    ["repCode",                input.repCode],
+    ["agentLevel",             input.agentLevel],
+    ["uplineRepCode",          input.uplineRepCode],
+    ["uplineName",             input.uplineName],
+    ["mgaRepCode",             input.mgaRepCode],
+    ["dashboardUrl",           input.dashboardUrl],
+    ["verifyLink",             input.verifyLink],
+    ["referrerAgentEmail",     input.referrerAgentEmail],
+    ["referrerAgentName",      input.referrerAgentName],
+    ["referrerAgentPhone",     input.referrerAgentPhone],
+    ["referrerAgentContactId", input.referrerAgentContactId],
+    ["attributionStatus",      input.attributionStatus],
   ];
 
   return map
