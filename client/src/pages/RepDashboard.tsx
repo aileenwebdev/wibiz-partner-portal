@@ -845,40 +845,82 @@ function EventsTab() {
 
 // ─── LEADS TAB ────────────────────────────────────────────────────────────────
 
+// Pipeline stage badge colours
+const STAGE_STYLE: Record<string, string> = {
+  "New Lead":             "bg-blue-50 text-blue-700 border-blue-200",
+  "Paid - SMB Lite":      "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Paid - SMB Standard":  "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Paid - SMB Pro":       "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Onboarding Started":   "bg-amber/10 text-amber border-amber/30",
+  "Onboarding Completed": "bg-amber/10 text-amber border-amber/30",
+  "Account Deployed":     "bg-navy/5 text-navy border-navy/20",
+};
+
+function StageBadge({ stage }: { stage?: string | null }) {
+  const label  = stage ?? "New Lead";
+  const style  = STAGE_STYLE[label] ?? "bg-gray-50 text-gray-500 border-gray-200";
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-[11px] font-semibold whitespace-nowrap ${style}`}>
+      {label}
+    </span>
+  );
+}
+
 function LeadsTab() {
   const { data: myLeads, isLoading } = trpc.rep.myLeads.useQuery();
   if (isLoading) return <CardLoader />;
 
+  // Stage funnel counts
+  const stages = ["New Lead", "Paid - SMB Lite", "Paid - SMB Standard", "Paid - SMB Pro", "Onboarding Started", "Onboarding Completed", "Account Deployed"];
+  const stageCounts = stages.map((s) => ({
+    label: s,
+    count: (myLeads ?? []).filter((l) => l.currentStage === s).length,
+  }));
+
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="font-sora text-[17px] font-bold text-navy">My Attributed Leads</h2>
-        <p className="text-[12px] text-muted mt-0.5">{myLeads?.length ?? 0} leads attributed to your code</p>
+        <h2 className="font-sora text-[17px] font-bold text-navy">My Leads</h2>
+        <p className="text-[12px] text-muted mt-0.5">{myLeads?.length ?? 0} leads in your pipeline</p>
       </div>
+
+      {/* Pipeline funnel summary */}
+      {!!myLeads?.length && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {stageCounts.filter((s) => s.count > 0).map((s) => (
+            <div key={s.label} className="bg-white rounded-xl border border-border p-3 shadow-card">
+              <p className="text-[11px] text-muted mb-1">{s.label}</p>
+              <p className="font-sora text-[22px] font-bold text-navy leading-none">{s.count}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-border shadow-card overflow-hidden">
         {!myLeads?.length ? (
-          <EmptyState icon={ICON.leads as string} text="No leads yet. Share your referral link to start attributing leads." />
+          <EmptyState icon={ICON.leads as string} text="No leads yet. Leads appear here once they come through your referral link and are added to the Wibiz pipeline." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-surface border-b border-border">
-                  {["Name", "Email", "Stage", "Attribution", "Created"].map((h) => (
-                    <th key={h} className="text-left px-5 py-3 text-[11px] font-semibold text-muted uppercase tracking-wide">{h}</th>
+                  {["Name", "Business", "Email", "Pipeline Stage", "Score", "Plan", "Date"].map((h) => (
+                    <th key={h} className="text-left px-5 py-3 text-[11px] font-semibold text-muted uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {myLeads.map((lead) => (
                   <tr key={lead.id} className="border-b border-[#f5f5f5] last:border-0 hover:bg-surface transition-colors cursor-default">
-                    <td className="px-5 py-3 font-medium text-navy text-[13px]">
-                      {[lead.firstName, lead.lastName].filter(Boolean).join(" ") || lead.email || "—"}
+                    <td className="px-5 py-3 font-medium text-navy text-[13px] whitespace-nowrap">
+                      {[lead.firstName, lead.lastName].filter(Boolean).join(" ") || "—"}
                     </td>
-                    <td className="px-5 py-3 text-[12px] text-muted">{lead.email || "—"}</td>
-                    <td className="px-5 py-3 text-[12px] text-muted capitalize">{lead.currentStage?.replace(/_/g, " ") || "—"}</td>
-                    <td className="px-5 py-3"><AttributionBadge status={lead.attributionStatus ?? "unresolved"} /></td>
-                    <td className="px-5 py-3 text-[11px] text-muted">{fmtDate(lead.createdAt)}</td>
+                    <td className="px-5 py-3 text-[12px] text-muted max-w-[130px] truncate">{lead.businessName || "—"}</td>
+                    <td className="px-5 py-3 text-[12px] text-muted max-w-[170px] truncate">{lead.email || "—"}</td>
+                    <td className="px-5 py-3"><StageBadge stage={lead.currentStage} /></td>
+                    <td className="px-5 py-3 text-[12px] text-muted">{lead.s360AuditScore ?? "—"}</td>
+                    <td className="px-5 py-3 text-[12px] text-muted max-w-[110px] truncate">{lead.s360PlanName ?? "—"}</td>
+                    <td className="px-5 py-3 text-[11px] text-muted whitespace-nowrap">{fmtDate(lead.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>

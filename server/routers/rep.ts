@@ -20,7 +20,8 @@ import {
 } from "../db/queries/reps";
 import { db } from "../db/client";
 import { reps, leads, AGENT_LEVELS } from "../db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
+import { env } from "../env";
 
 export const repRouter = router({
   // ─── Auth ────────────────────────────────────────────────────────────────
@@ -80,9 +81,12 @@ export const repRouter = router({
 
   myLeads: authedProcedure.query(async ({ ctx }) => {
     return db.query.leads.findMany({
-      where: eq(leads.repCode, ctx.repCode),
+      where: and(
+        eq(leads.repCode, ctx.repCode),
+        eq(leads.pipelineId, env.GHL_WIBIZ_PIPELINE_ID),
+      ),
       orderBy: [desc(leads.createdAt)],
-      limit: 50,
+      limit: 200,
     });
   }),
 

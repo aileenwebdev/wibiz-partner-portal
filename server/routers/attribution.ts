@@ -18,10 +18,11 @@ import {
   resyncLeadAttribution,
   manuallyAssignRep,
 } from "../lib/attribution";
-import { ghlListContacts, flattenGhlCustomFields } from "../lib/ghl";
+import { ghlListContacts, ghlListOpportunities, flattenGhlCustomFields } from "../lib/ghl";
+import { env } from "../env";
 import { db } from "../db/client";
 import { leads } from "../db/schema";
-import { desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 export const attributionRouter = router({
   // All leads in DB — primary admin view
@@ -29,12 +30,57 @@ export const attributionRouter = router({
     .input(z.object({ limit: z.number().default(500) }))
     .query(async ({ input }) => getAllLeads(input.limit)),
 
-  // Pull all GHL contacts tagged "lead" and upsert into DB
+  // Pull Wibiz pipeline opportunities + tagged contacts from GHL — upsert all into DB
   syncFromGhl: adminProcedure.mutation(async () => {
-    const contacts = await ghlListContacts({ tag: "lead" });
+    const pipelineId = env.GHL_WIBIZ_PIPELINE_ID;
     let synced = 0;
     let resolved = 0;
     const errors: string[] = [];
+
+    // ── Step 1: sync pipeline opportunities (these are the canonical leads) ──
+    const opps = await ghlListOpportunities(pipelineId);
+
+    for (const opp of opps) {
+      try {
+        const contact  = (opp.contact  ?? {}) as Record<string, unknown>;
+        const stage    = (opp.pipelineStage ?? {}) as Record<string, unknown>;
+        const stageName = String(stage.name ?? opp.pipelineStageName ?? "New Lead");
+        const contactId = String(opp.contactId ?? contact.id ?? "");
+        const customFields = flattenGhlCustomFields(contact);
+
+        const payload = {
+          ghlContactId: contactId,
+          contact_id:   contactId,
+          firstName:    String(contact.firstName ?? ""),
+          lastName:     String(contact.lastName  ?? ""),
+          email:        String(contact.email ?? ""),
+          phone:        String(contact.phone ?? ""),
+          businessName: String(contact.companyName ?? ""),
+          REF_ID:       customFields["ref_id"] ?? customFields["rep_code"] ?? "",
+          ...customFields,
+        };
+
+        const result = await resolveAttribution(payload, "admin:ghl-sync:pipeline");
+        synced++;
+        if (result.status === "resolved") resolved++;
+
+        // Stamp pipeline info onto the lead row
+        if (result.leadId) {
+          await db.update(leads).set({
+            pipelineId,
+            currentStage:     stageName,
+            ghlOpportunityId: String(opp.id ?? ""),
+            updatedAt:        new Date(),
+          }).where(eq(leads.id, result.leadId));
+        }
+      } catch (err) {
+        errors.push(String((err as Error).message ?? err));
+      }
+    }
+
+    // ── Step 2: sync contacts tagged "lead" not yet in DB ──
+    const contacts = await ghlListContacts({ tag: "lead" });
+    let contactSynced = 0;
 
     for (const contact of contacts) {
       try {
@@ -47,21 +93,23 @@ export const attributionRouter = router({
           email:         String(contact.email ?? ""),
           phone:         String(contact.phone ?? ""),
           businessName:  String(contact.companyName ?? ""),
-          // Try REF_ID from custom fields (multiple possible key names)
-          REF_ID:        customFields["ref_id"] ?? customFields["rep_code"] ?? customFields["bc360_agent_id"] ?? "",
-          // Pass all custom fields through for field mapping
+          REF_ID:        customFields["ref_id"] ?? customFields["rep_code"] ?? "",
           ...customFields,
         };
-
-        const result = await resolveAttribution(payload, "admin:ghl-sync");
-        synced++;
+        const result = await resolveAttribution(payload, "admin:ghl-sync:contacts");
+        contactSynced++;
         if (result.status === "resolved") resolved++;
       } catch (err) {
         errors.push(String((err as Error).message ?? err));
       }
     }
 
-    return { total: contacts.length, synced, resolved, errors: errors.slice(0, 10) };
+    return {
+      pipeline:  { total: opps.length,     synced },
+      contacts:  { total: contacts.length, synced: contactSynced },
+      resolved,
+      errors:    errors.slice(0, 10),
+    };
   }),
 
   logs: adminProcedure

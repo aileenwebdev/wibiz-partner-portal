@@ -201,6 +201,36 @@ export function flattenGhlCustomFields(contact: Record<string, unknown>): Record
   return out;
 }
 
+/**
+ * Pull all opportunities from a specific pipeline.
+ * Returns flat array with stage name already resolved.
+ */
+export async function ghlListOpportunities(pipelineId: string): Promise<Record<string, unknown>[]> {
+  const pageSize = 100;
+  const maxPages = 20;
+  const all: Record<string, unknown>[] = [];
+  let startAfterId: string | undefined;
+
+  for (let page = 0; page < maxPages; page++) {
+    const params: Record<string, unknown> = {
+      location_id: env.GHL_LOCATION_ID,
+      pipeline_id: pipelineId,
+      limit:       pageSize,
+    };
+    if (startAfterId) params.startAfterId = startAfterId;
+
+    const res  = await ghlApi.get("/opportunities/search", { params });
+    const opps: Record<string, unknown>[] = res.data?.opportunities ?? [];
+    all.push(...opps);
+
+    if (opps.length < pageSize) break;
+    const last = opps[opps.length - 1] as Record<string, unknown>;
+    startAfterId = String(last.id ?? "");
+  }
+
+  return all;
+}
+
 // ─── Attribution Write-back ───────────────────────────────────────────────────
 
 export async function ghlWriteAttribution(

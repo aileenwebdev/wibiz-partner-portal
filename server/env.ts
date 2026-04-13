@@ -23,6 +23,9 @@ export const env = {
   GHL_PRIVATE_API_KEY: optional("GHL_PRIVATE_API_KEY"), // set in Railway dashboard
   GHL_LOCATION_ID: optional("GHL_LOCATION_ID", "4NIo95IzKUVayysfr0PX"),
 
+  // Wibiz lead pipeline (New Lead → Account Deployed)
+  GHL_WIBIZ_PIPELINE_ID: optional("GHL_WIBIZ_PIPELINE_ID", "FIj4Vsnz0CorXDuX8q0t"),
+
   // Scale360 pipelines
   GHL_SCALE360_PIPELINE_ID: optional("GHL_SCALE360_PIPELINE_ID", "mzgOuQhHmkDuixcpiSbj"),
   GHL_SCALE360_ENTERPRISE_PIPELINE_ID: optional("GHL_SCALE360_ENTERPRISE_PIPELINE_ID", "HmZA3KEdITefCLNZwg1H"),

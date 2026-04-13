@@ -551,7 +551,30 @@ function CommissionsTab() {
   );
 }
 
+// Pipeline stage badge
+const STAGE_STYLE: Record<string, string> = {
+  "New Lead":             "bg-blue-50 text-blue-700 border-blue-200",
+  "Paid - SMB Lite":      "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Paid - SMB Standard":  "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Paid - SMB Pro":       "bg-emerald-100 text-emerald-800 border-emerald-300",
+  "Onboarding Started":   "bg-amber-50 text-amber-700 border-amber-200",
+  "Onboarding Completed": "bg-amber-50 text-amber-700 border-amber-200",
+  "Account Deployed":     "bg-navy/5 text-navy border-navy/20",
+};
+
+function StageBadge({ stage }: { stage?: string | null }) {
+  if (!stage) return <span className="text-light text-xs">—</span>;
+  const style = STAGE_STYLE[stage] ?? "bg-gray-50 text-gray-500 border-gray-200";
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-semibold whitespace-nowrap ${style}`}>
+      {stage}
+    </span>
+  );
+}
+
 // ─── All Leads ────────────────────────────────────────────────────────────────
+
+type SyncResult = { pipeline: { total: number; synced: number }; contacts: { total: number; synced: number }; resolved: number; errors: string[] };
 
 function AllLeadsTab() {
   const { data: leads, isLoading, refetch } = trpc.attribution.allLeads.useQuery({ limit: 500 });
@@ -572,9 +595,11 @@ function AllLeadsTab() {
     );
   });
 
+  const inPipeline = (leads ?? []).filter((l) => l.pipelineId);
   const stats = {
-    total:    leads?.length ?? 0,
-    resolved: (leads ?? []).filter((l) => l.attributionStatus === "resolved").length,
+    total:      leads?.length ?? 0,
+    pipeline:   inPipeline.length,
+    resolved:   (leads ?? []).filter((l) => l.attributionStatus === "resolved").length,
     unresolved: (leads ?? []).filter((l) => l.attributionStatus !== "resolved").length,
   };
 
@@ -600,12 +625,31 @@ function AllLeadsTab() {
         </div>
       </div>
 
+      {/* Stats strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Total Leads",      value: stats.total      },
+          { label: "In Pipeline",      value: stats.pipeline   },
+          { label: "Attributed",       value: stats.resolved   },
+          { label: "Unattributed",     value: stats.unresolved },
+        ].map((s) => (
+          <div key={s.label} className="bg-white rounded-xl border border-border p-4 shadow-sm">
+            <p className="text-[11px] text-light uppercase tracking-wide mb-1">{s.label}</p>
+            <p className="font-sora text-[24px] font-bold text-navy leading-none">{s.value}</p>
+          </div>
+        ))}
+      </div>
+
       {/* Sync result */}
-      {sync.isSuccess && (
-        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-[13px] text-green-700">
-          GHL sync complete — {(sync.data as { synced: number }).synced} contacts imported, {(sync.data as { resolved: number }).resolved} attributed.
-        </div>
-      )}
+      {sync.isSuccess && (() => {
+        const d = sync.data as SyncResult;
+        return (
+          <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-[13px] text-green-700">
+            GHL sync complete — {d.pipeline.synced} pipeline leads + {d.contacts.synced} contacts imported · {d.resolved} attributed.
+            {d.errors.length > 0 && <span className="text-amber-600 ml-2">{d.errors.length} errors (check logs)</span>}
+          </div>
+        );
+      })()}
       {sync.isError && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-[13px] text-red-600">
           Sync error: {sync.error.message}
@@ -653,7 +697,7 @@ function AllLeadsTab() {
                       ? <RepCodePill>{l.repCode}</RepCodePill>
                       : <span className="text-red-400 text-[11px] font-medium">none</span>}
                   </td>
-                  <td className="px-4 py-3 text-muted capitalize whitespace-nowrap">{l.currentStage?.replace(/_/g, " ") ?? "—"}</td>
+                  <td className="px-4 py-3"><StageBadge stage={l.currentStage} /></td>
                   <td className="px-4 py-3 text-muted">{l.s360AuditScore ?? "—"}</td>
                   <td className="px-4 py-3 text-muted max-w-[120px] truncate">{l.s360PlanName ?? "—"}</td>
                   <td className="px-4 py-3"><StatusBadge status={l.attributionStatus ?? "unresolved"} /></td>
