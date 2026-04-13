@@ -76,14 +76,22 @@ export const GHL_FIELDS = {
 } as const;
 
 // ─── HTTP Client ──────────────────────────────────────────────────────────────
+// NOTE: Authorization is set via interceptor so it always reads the current
+// env value at request time (avoids stale key baked in at module load).
 const ghlApi = axios.create({
   baseURL: "https://services.leadconnectorhq.com",
   headers: {
-    Authorization: `Bearer ${env.GHL_PRIVATE_API_KEY}`,
-    Version:       "2021-07-28",
+    Version:        "2021-07-28",
     "Content-Type": "application/json",
   },
   timeout: 15000,
+});
+
+ghlApi.interceptors.request.use((config) => {
+  const key = env.GHL_PRIVATE_API_KEY;
+  if (!key) throw new Error("GHL_PRIVATE_API_KEY is not set. Add it to your Railway environment variables.");
+  config.headers["Authorization"] = `Bearer ${key}`;
+  return config;
 });
 
 // ─── Contact CRUD ─────────────────────────────────────────────────────────────

@@ -579,6 +579,7 @@ type SyncResult = { pipeline: { total: number; synced: number }; contacts: { tot
 function AllLeadsTab() {
   const { data: leads, isLoading, refetch } = trpc.attribution.allLeads.useQuery({ limit: 500 });
   const sync = trpc.attribution.syncFromGhl.useMutation({ onSuccess: () => refetch() });
+  const testGhl = trpc.attribution.testGhlConnection.useMutation();
   const [search, setSearch] = useState("");
 
   if (isLoading) return <LoadingCard />;
@@ -614,6 +615,13 @@ function AllLeadsTab() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => testGhl.mutate()}
+            disabled={testGhl.isPending}
+            className="flex items-center gap-1.5 border border-border text-navy text-[12px] font-semibold px-4 py-2 rounded-[8px] hover:bg-surface transition disabled:opacity-50 bg-white"
+          >
+            {testGhl.isPending ? "Testing…" : "Test GHL Connection"}
+          </button>
           <button
             onClick={() => sync.mutate()}
             disabled={sync.isPending}
@@ -653,6 +661,18 @@ function AllLeadsTab() {
       {sync.isError && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-[13px] text-red-600">
           Sync error: {sync.error.message}
+        </div>
+      )}
+      {testGhl.isSuccess && (
+        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-[13px] text-green-700">
+          {(testGhl.data as { message: string }).message}
+        </div>
+      )}
+      {testGhl.isError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-[13px] text-red-600 space-y-1">
+          <p className="font-semibold">GHL Connection Failed</p>
+          <p>{testGhl.error.message}</p>
+          <p className="text-[11px] text-red-500 mt-1">Fix: Go to Railway → your service → Variables → add <code className="bg-red-100 px-1 rounded">GHL_PRIVATE_API_KEY</code> with your GHL Location API key.</p>
         </div>
       )}
 

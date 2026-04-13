@@ -25,6 +25,22 @@ import { leads } from "../db/schema";
 import { eq, desc } from "drizzle-orm";
 
 export const attributionRouter = router({
+  // Test GHL API key is valid and has the right scopes
+  testGhlConnection: adminProcedure.mutation(async () => {
+    const key = env.GHL_PRIVATE_API_KEY;
+    if (!key) throw new Error("GHL_PRIVATE_API_KEY is not set in Railway environment variables.");
+    try {
+      const { ghlListContacts } = await import("../lib/ghl");
+      await ghlListContacts({ limit: 1 });
+      return { ok: true, message: "GHL connection successful — API key is valid." };
+    } catch (err: unknown) {
+      const msg = (err as Error).message ?? String(err);
+      if (msg.includes("401")) throw new Error("GHL API key is invalid or missing required scopes (contacts.read, opportunities.read).");
+      if (msg.includes("403")) throw new Error("GHL API key does not have permission for this location.");
+      throw new Error(`GHL connection failed: ${msg}`);
+    }
+  }),
+
   // All leads in DB — primary admin view
   allLeads: adminProcedure
     .input(z.object({ limit: z.number().default(500) }))
