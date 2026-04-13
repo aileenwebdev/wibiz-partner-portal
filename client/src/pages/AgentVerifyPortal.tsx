@@ -33,21 +33,27 @@ export default function AgentVerifyPortal() {
     setError("");
 
     try {
-      // Upload to server (presigned URL flow — simplified to direct FormData here)
+      // Upload directly to Cloudinary using unsigned upload preset
+      const cloudName    = __CLOUDINARY_CLOUD_NAME__;
+      const uploadPreset = __CLOUDINARY_UPLOAD_PRESET__;
+
       const fd = new FormData();
       fd.append("file", file);
-      fd.append("token", token);
+      fd.append("upload_preset", uploadPreset);
+      fd.append("folder", "wibiz_id_verification");
 
-      const res = await fetch("/api/upload/id-document", {
-        method:      "POST",
-        body:        fd,
-        credentials: "include",
-      });
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+        { method: "POST", body: fd }
+      );
 
-      if (!res.ok) throw new Error("Upload failed");
-      const { url } = await res.json() as { url: string };
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as Record<string, unknown>;
+        throw new Error((body.error as { message?: string })?.message ?? "Cloudinary upload failed");
+      }
 
-      await submitDoc.mutateAsync({ token, documentUrl: url });
+      const data = await res.json() as { secure_url: string };
+      await submitDoc.mutateAsync({ token, documentUrl: data.secure_url });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {

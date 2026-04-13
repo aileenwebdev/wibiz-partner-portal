@@ -54,7 +54,12 @@ export const env = {
   DOCUSEAL_API_KEY: optional("DOCUSEAL_API_KEY"),
   DOCUSEAL_W9_TEMPLATE_ID: optional("DOCUSEAL_W9_TEMPLATE_ID"),
 
-  // S3
+  // Cloudinary (unsigned upload via preset — no secret needed server-side)
+  CLOUDINARY_CLOUD_NAME:   optional("CLOUDINARY_CLOUD_NAME",   "dguj5ncu4"),
+  CLOUDINARY_UPLOAD_PRESET: optional("CLOUDINARY_UPLOAD_PRESET", "Wibiz_Acad"),
+  CLOUDINARY_API_KEY:      optional("CLOUDINARY_API_KEY",      "435165414431925"),
+
+  // S3 (legacy — replaced by Cloudinary)
   S3_BUCKET: optional("S3_BUCKET"),
   S3_REGION: optional("S3_REGION", "us-east-1"),
   AWS_ACCESS_KEY_ID: optional("AWS_ACCESS_KEY_ID"),
