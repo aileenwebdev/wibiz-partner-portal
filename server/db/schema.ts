@@ -117,14 +117,31 @@ export const leads = mysqlTable(
     referrerAgentContactId: varchar("referrer_agent_contact_id", { length: 100 }),
     attributionStatus: mysqlEnum("attribution_status", ["resolved", "unresolved", "no_rep_code"]).default("unresolved"),
 
+    // Lead source
+    sourcePlatform: varchar("source_platform", { length: 100 }),           // SOURCE_PLATFORM
+
     // Scale360 audit results
     s360AuditScore: varchar("s360_audit_score", { length: 50 }),
     s360AuditStatus: varchar("s360_audit_status", { length: 100 }),
     s360PlanName: varchar("s360_plan_name", { length: 255 }),
+    s360PlanDesc: text("s360_plan_desc"),                                   // PLAN_DESC
+    s360PlanPrice: varchar("s360_plan_price", { length: 50 }),              // PLAN_PRICE
     s360PdfLink: text("s360_pdf_link"),
     s360Roi: varchar("s360_roi", { length: 50 }),
     s360EmployeeCount: varchar("s360_employee_count", { length: 50 }),
     s360Industry: varchar("s360_industry", { length: 100 }),
+    s360IndustryInsight: text("s360_industry_insight"),                     // INDUSTRY_INSIGHT
+    s360IndustryBenefits: text("s360_industry_benefits"),                   // INDUSTRY_BENEFITS (HTML)
+    s360LossYr: varchar("s360_loss_yr", { length: 50 }),                    // LOSS_YR annual revenue loss
+    s360LossMo: varchar("s360_loss_mo", { length: 50 }),                    // LOSS_MO monthly revenue loss
+    s360SavedHrs: varchar("s360_saved_hrs", { length: 50 }),                // SAVED_HRS
+    s360GhostYr: varchar("s360_ghost_yr", { length: 50 }),                  // GHOST_YR missed leads/yr
+    s360AfterYr: varchar("s360_after_yr", { length: 50 }),                  // AFTER_YR optimized leads/yr
+    s360TimeYr: varchar("s360_time_yr", { length: 50 }),                    // TIME_YR time savings/yr
+    s360Breakeven: varchar("s360_breakeven", { length: 50 }),               // BREAKEVEN days
+    s360EconomyTier: varchar("s360_economy_tier", { length: 100 }),         // ECONOMY_TIER
+    s360PersonaId: varchar("s360_persona_id", { length: 100 }),             // persona_id
+    s360Multiplier: varchar("s360_multiplier", { length: 50 }),             // multiplier
     s360AuditReceivedAt: timestamp("s360_audit_received_at"),
 
     // Payment

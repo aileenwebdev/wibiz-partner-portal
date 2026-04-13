@@ -32,14 +32,54 @@ export async function handleScale360Webhook(req: Request, res: Response): Promis
         updatedAt: new Date(),
       };
 
-      // ALL_CAPS → s360* mapping (matches BC360 pattern)
-      if (payload.AUDIT_SCORE        || payload.audit_score)        auditUpdate.s360AuditScore    = String(payload.AUDIT_SCORE       ?? payload.audit_score);
-      if (payload.AUDIT_STATUS       || payload.audit_status)       auditUpdate.s360AuditStatus   = String(payload.AUDIT_STATUS      ?? payload.audit_status);
-      if (payload.PLAN_NAME          || payload.plan_name)          auditUpdate.s360PlanName      = String(payload.PLAN_NAME         ?? payload.plan_name);
-      if (payload.PDF_LINK           || payload.pdf_link)           auditUpdate.s360PdfLink       = String(payload.PDF_LINK          ?? payload.pdf_link);
-      if (payload.ROI                || payload.roi)                auditUpdate.s360Roi           = String(payload.ROI               ?? payload.roi);
-      if (payload.EMPLOYEE_COUNT     || payload.employee_count)     auditUpdate.s360EmployeeCount = String(payload.EMPLOYEE_COUNT    ?? payload.employee_count);
-      if (payload.INDUSTRY           || payload.industry)           auditUpdate.s360Industry      = String(payload.INDUSTRY          ?? payload.industry);
+      // Helpers
+      const str = (v: unknown) => (v != null && v !== "" ? String(v) : undefined);
+
+      // Score / status — payload uses SCORE/STATUS (not AUDIT_SCORE/AUDIT_STATUS)
+      const score  = str(payload.SCORE  ?? payload.AUDIT_SCORE  ?? payload.audit_score);
+      const status = str(payload.STATUS ?? payload.AUDIT_STATUS ?? payload.audit_status);
+      if (score)  auditUpdate.s360AuditScore  = score;
+      if (status) auditUpdate.s360AuditStatus = status;
+
+      // Plan
+      if (str(payload.PLAN_NAME ?? payload.plan_name)) auditUpdate.s360PlanName  = str(payload.PLAN_NAME ?? payload.plan_name);
+      if (str(payload.PLAN_DESC ?? payload.plan_desc)) auditUpdate.s360PlanDesc  = str(payload.PLAN_DESC ?? payload.plan_desc);
+      if (str(payload.PLAN_PRICE))                     auditUpdate.s360PlanPrice = str(payload.PLAN_PRICE);
+
+      // PDF + ROI
+      if (str(payload.PDF_LINK  ?? payload.pdf_link))  auditUpdate.s360PdfLink  = str(payload.PDF_LINK ?? payload.pdf_link);
+      if (str(payload.ROI       ?? payload.roi))       auditUpdate.s360Roi      = str(payload.ROI      ?? payload.roi);
+
+      // Industry — payload uses INDUSTRY_NAME (not INDUSTRY)
+      if (str(payload.INDUSTRY_NAME ?? payload.INDUSTRY ?? payload.industry)) {
+        auditUpdate.s360Industry = str(payload.INDUSTRY_NAME ?? payload.INDUSTRY ?? payload.industry);
+      }
+      if (str(payload.INDUSTRY_INSIGHT))  auditUpdate.s360IndustryInsight  = str(payload.INDUSTRY_INSIGHT);
+      if (str(payload.INDUSTRY_BENEFITS)) auditUpdate.s360IndustryBenefits = str(payload.INDUSTRY_BENEFITS);
+
+      // Legacy employee count
+      if (str(payload.EMPLOYEE_COUNT ?? payload.employee_count)) {
+        auditUpdate.s360EmployeeCount = str(payload.EMPLOYEE_COUNT ?? payload.employee_count);
+      }
+
+      // Revenue loss / savings metrics
+      if (str(payload.LOSS_YR))    auditUpdate.s360LossYr    = str(payload.LOSS_YR);
+      if (str(payload.LOSS_MO))    auditUpdate.s360LossMo    = str(payload.LOSS_MO);
+      if (str(payload.SAVED_HRS))  auditUpdate.s360SavedHrs  = str(payload.SAVED_HRS);
+      if (str(payload.GHOST_YR))   auditUpdate.s360GhostYr   = str(payload.GHOST_YR);
+      if (str(payload.AFTER_YR))   auditUpdate.s360AfterYr   = str(payload.AFTER_YR);
+      if (str(payload.TIME_YR))    auditUpdate.s360TimeYr    = str(payload.TIME_YR);
+      if (str(payload.BREAKEVEN))  auditUpdate.s360Breakeven = str(payload.BREAKEVEN);
+
+      // Classification
+      if (str(payload.ECONOMY_TIER))  auditUpdate.s360EconomyTier = str(payload.ECONOMY_TIER);
+      if (str(payload.persona_id))    auditUpdate.s360PersonaId   = str(payload.persona_id);
+      if (str(payload.multiplier))    auditUpdate.s360Multiplier  = str(payload.multiplier);
+
+      // Source platform (overwrite only if provided)
+      if (str(payload.SOURCE_PLATFORM ?? payload.source_platform)) {
+        auditUpdate.sourcePlatform = str(payload.SOURCE_PLATFORM ?? payload.source_platform);
+      }
 
       if (Object.keys(auditUpdate).length > 1) {
         auditUpdate.s360AuditReceivedAt = new Date();

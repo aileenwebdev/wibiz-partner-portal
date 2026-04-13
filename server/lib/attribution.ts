@@ -37,15 +37,18 @@ export interface InboundLeadPayload {
   ghlContactId?: string;
   contact_id?: string;
 
-  // Contact info (may be partial)
+  // Contact info (may be partial — also accepts revenue-audit ALL_CAPS aliases)
   firstName?: string;
   first_name?: string;
+  OWNER?: string;          // revenue audit: full name of business owner
   lastName?: string;
   last_name?: string;
   email?: string;
   phone?: string;
+  PHONE?: string;
   businessName?: string;
   company_name?: string;
+  BIZ?: string;            // revenue audit: business name
 
   // Can contain anything GHL sends
   [key: string]: unknown;
@@ -63,6 +66,7 @@ export async function resolveAttribution(
   triggeredBy: string
 ): Promise<AttributionResult> {
   const ghlContactId = String(payload.ghlContactId ?? payload.contact_id ?? "");
+  const emailFallback = String(payload.email ?? "");
 
   // Step 1 — extract rep code
   const match = extractRepCode(payload as Record<string, unknown>);
@@ -73,6 +77,9 @@ export async function resolveAttribution(
       console.error("[GHL] Tag lead failed:", err.message)
     );
   }
+
+  // Allow email-only payloads (e.g. revenue audit form with no ghlContactId)
+  const effectiveId = ghlContactId || emailFallback;
 
   if (!match) {
     // No rep code found at all — log and return
@@ -161,17 +168,30 @@ async function upsertLead(
   repId: number | null,
   referrer?: LeadReferrer,
 ): Promise<number | null> {
-  if (!ghlContactId) return null;
-
-  const existing = await db.query.leads.findFirst({
-    where: eq(leads.ghlContactId, ghlContactId),
-  });
-
-  const firstName    = String(payload.firstName ?? payload.first_name ?? "");
-  const lastName     = String(payload.lastName  ?? payload.last_name  ?? "");
+  // Resolve contact fields — OWNER (revenue audit) is a full name fallback
+  const ownerParts   = String(payload.OWNER ?? "").trim().split(" ");
+  const firstName    = String(payload.firstName ?? payload.first_name ?? ownerParts[0] ?? "");
+  const lastName     = String(payload.lastName  ?? payload.last_name  ?? ownerParts.slice(1).join(" ") ?? "");
   const email        = String(payload.email ?? "");
-  const phone        = String(payload.phone ?? "");
-  const businessName = String(payload.businessName ?? payload.company_name ?? "");
+  const phone        = String(payload.phone ?? payload.PHONE ?? "");
+  const businessName = String(payload.businessName ?? payload.company_name ?? payload.BIZ ?? "");
+
+  // Match by ghlContactId first, then fall back to email
+  let existing = ghlContactId
+    ? await db.query.leads.findFirst({ where: eq(leads.ghlContactId, ghlContactId) })
+    : null;
+
+  if (!existing && email) {
+    existing = await db.query.leads.findFirst({ where: eq(leads.email, email) });
+  }
+
+  // If we found by email but ghlContactId is now known, backfill it
+  if (existing && ghlContactId && !existing.ghlContactId) {
+    await db.update(leads).set({ ghlContactId }).where(eq(leads.id, existing.id));
+  }
+
+  // If no ghlContactId AND no email, can't upsert
+  if (!ghlContactId && !email) return null;
 
   const newStatus: "resolved" | "unresolved" | "no_rep_code" =
     repId ? "resolved" : repCode ? "unresolved" : "no_rep_code";
@@ -197,16 +217,19 @@ async function upsertLead(
     return existing.id;
   }
 
+  const sourcePlatform = String(payload.SOURCE_PLATFORM ?? payload.source_platform ?? "").trim() || undefined;
+
   // Insert new
   const [result] = await db.insert(leads).values({
-    ghlContactId,
+    ghlContactId:   ghlContactId || undefined,
     repCode,
     repId,
     firstName,
     lastName,
-    email,
-    phone,
-    businessName,
+    email:          email || undefined,
+    phone:          phone || undefined,
+    businessName:   businessName || undefined,
+    sourcePlatform,
     referrerAgentName:      referrer?.name      ?? undefined,
     referrerAgentEmail:     referrer?.email     ?? undefined,
     referrerAgentPhone:     referrer?.phone     ?? undefined,
