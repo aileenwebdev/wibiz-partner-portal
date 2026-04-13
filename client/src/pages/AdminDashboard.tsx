@@ -48,7 +48,7 @@ const LEVELS = ["Associate", "Senior Associate", "Agency", "Super Team", "Super 
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type Tab = "agents" | "attribution" | "webhooks" | "commissions" | "registrations" | "upgrades" | "verifications" | "events" | "videos";
+type Tab = "agents" | "leads" | "attribution" | "webhooks" | "commissions" | "registrations" | "upgrades" | "verifications" | "events" | "videos";
 
 const NAV_GROUPS: { label: string; items: { id: Tab; label: string; icon: string }[] }[] = [
   {
@@ -58,6 +58,14 @@ const NAV_GROUPS: { label: string; items: { id: Tab; label: string; icon: string
       { id: "registrations", label: "Registrations",   icon: "userPlus"  },
       { id: "upgrades",      label: "Upgrades",        icon: "trending"  },
       { id: "verifications", label: "ID Verification", icon: "shield"    },
+    ],
+  },
+  {
+    label: "Leads",
+    items: [
+      { id: "leads",       label: "All Leads",    icon: "target"   },
+      { id: "attribution", label: "Attribution",  icon: "barChart" },
+      { id: "webhooks",    label: "Webhook Logs", icon: "activity" },
     ],
   },
   {
@@ -71,13 +79,6 @@ const NAV_GROUPS: { label: string; items: { id: Tab; label: string; icon: string
     items: [
       { id: "events", label: "Events",        icon: "calendar" },
       { id: "videos", label: "Video Library", icon: "video"    },
-    ],
-  },
-  {
-    label: "System",
-    items: [
-      { id: "attribution", label: "Attribution",  icon: "target"    },
-      { id: "webhooks",    label: "Webhook Logs", icon: "activity"  },
     ],
   },
 ];
@@ -244,6 +245,7 @@ export default function AdminDashboard() {
         {/* Content */}
         <main className="flex-1 overflow-y-auto px-6 py-5">
           {tab === "agents"        && <AgentsTab />}
+          {tab === "leads"         && <AllLeadsTab />}
           {tab === "registrations" && <RegistrationsTab />}
           {tab === "upgrades"      && <UpgradesTab />}
           {tab === "commissions"   && <CommissionsTab />}
@@ -545,6 +547,125 @@ function CommissionsTab() {
             : <span key="na" className="text-light text-xs">—</span>,
         ])}
       />
+    </div>
+  );
+}
+
+// ─── All Leads ────────────────────────────────────────────────────────────────
+
+function AllLeadsTab() {
+  const { data: leads, isLoading, refetch } = trpc.attribution.allLeads.useQuery({ limit: 500 });
+  const sync = trpc.attribution.syncFromGhl.useMutation({ onSuccess: () => refetch() });
+  const [search, setSearch] = useState("");
+
+  if (isLoading) return <LoadingCard />;
+
+  const filtered = (leads ?? []).filter((l) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      (l.email ?? "").toLowerCase().includes(q) ||
+      (l.firstName ?? "").toLowerCase().includes(q) ||
+      (l.lastName ?? "").toLowerCase().includes(q) ||
+      (l.repCode ?? "").toLowerCase().includes(q) ||
+      (l.businessName ?? "").toLowerCase().includes(q)
+    );
+  });
+
+  const stats = {
+    total:    leads?.length ?? 0,
+    resolved: (leads ?? []).filter((l) => l.attributionStatus === "resolved").length,
+    unresolved: (leads ?? []).filter((l) => l.attributionStatus !== "resolved").length,
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-[17px] font-bold text-navy font-sora">All Leads</h2>
+          <p className="text-[12px] text-light mt-0.5">
+            {stats.total} total · {stats.resolved} attributed · {stats.unresolved} unresolved
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => sync.mutate()}
+            disabled={sync.isPending}
+            className="flex items-center gap-1.5 bg-navy text-white text-[12px] font-semibold px-4 py-2 rounded-[8px] hover:opacity-90 transition disabled:opacity-50"
+          >
+            <Icon name="activity" size={13} />
+            {sync.isPending ? "Syncing from GHL…" : "Sync from GHL"}
+          </button>
+        </div>
+      </div>
+
+      {/* Sync result */}
+      {sync.isSuccess && (
+        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-[13px] text-green-700">
+          GHL sync complete — {(sync.data as { synced: number }).synced} contacts imported, {(sync.data as { resolved: number }).resolved} attributed.
+        </div>
+      )}
+      {sync.isError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-[13px] text-red-600">
+          Sync error: {sync.error.message}
+        </div>
+      )}
+
+      {/* Search */}
+      <div className="relative">
+        <Icon name="search" size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-light pointer-events-none" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, email, rep code…"
+          className="w-full pl-9 pr-4 py-2 text-[13px] border border-border rounded-[8px] focus:outline-none focus:ring-2 focus:ring-amber/30 bg-white"
+        />
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="bg-surface border-b border-border">
+                {["Name", "Email", "Business", "Rep Code", "Stage", "Score", "Plan", "Attribution", "Date"].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 text-[11px] font-semibold text-light uppercase tracking-wide whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {!filtered.length ? (
+                <tr>
+                  <td colSpan={9} className="text-center py-12 text-light text-[13px]">
+                    {leads?.length ? "No leads match your search." : "No leads yet. Click \"Sync from GHL\" to import existing leads."}
+                  </td>
+                </tr>
+              ) : filtered.map((l) => (
+                <tr key={l.id} className="border-b border-[#f5f5f5] last:border-0 hover:bg-surface/50 transition-colors">
+                  <td className="px-4 py-3 font-medium text-navy whitespace-nowrap">
+                    {[l.firstName, l.lastName].filter(Boolean).join(" ") || "—"}
+                  </td>
+                  <td className="px-4 py-3 text-muted max-w-[180px] truncate">{l.email ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted max-w-[140px] truncate">{l.businessName ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    {l.repCode
+                      ? <RepCodePill>{l.repCode}</RepCodePill>
+                      : <span className="text-red-400 text-[11px] font-medium">none</span>}
+                  </td>
+                  <td className="px-4 py-3 text-muted capitalize whitespace-nowrap">{l.currentStage?.replace(/_/g, " ") ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted">{l.s360AuditScore ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted max-w-[120px] truncate">{l.s360PlanName ?? "—"}</td>
+                  <td className="px-4 py-3"><StatusBadge status={l.attributionStatus ?? "unresolved"} /></td>
+                  <td className="px-4 py-3 text-light whitespace-nowrap text-[11px]">
+                    {l.createdAt ? new Date(l.createdAt).toLocaleDateString() : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

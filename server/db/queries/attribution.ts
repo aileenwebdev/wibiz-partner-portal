@@ -34,6 +34,13 @@ export async function getWebhookLogs(limit = 100) {
 
 // ─── Leads (for admin attribution view) ──────────────────────────────────────
 
+export async function getAllLeads(limit = 500) {
+  return db.query.leads.findMany({
+    orderBy: [desc(leads.createdAt)],
+    limit,
+  });
+}
+
 export async function getUnresolvedLeads() {
   return db.query.leads.findMany({
     where: ne(leads.attributionStatus, "resolved"),

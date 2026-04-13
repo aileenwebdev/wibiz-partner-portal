@@ -143,6 +143,64 @@ export async function ghlGetContact(ghlContactId: string): Promise<Record<string
   return res.data?.contact ?? {};
 }
 
+/**
+ * Pull all contacts from GHL for the configured location.
+ * Paginates automatically until all contacts are fetched (max 10 pages for safety).
+ * Returns flat array of contact objects.
+ */
+export async function ghlListContacts(opts?: { tag?: string; limit?: number }): Promise<Record<string, unknown>[]> {
+  const pageSize = 100;
+  const maxPages = 10;
+  const all: Record<string, unknown>[] = [];
+
+  let startAfter: string | undefined;
+  let startAfterId: string | undefined;
+
+  for (let page = 0; page < maxPages; page++) {
+    const params: Record<string, unknown> = {
+      locationId: env.GHL_LOCATION_ID,
+      limit: pageSize,
+    };
+    if (opts?.tag)          params.tags = opts.tag;
+    if (startAfter)         params.startAfter = startAfter;
+    if (startAfterId)       params.startAfterId = startAfterId;
+
+    const res = await ghlApi.get("/contacts/", { params });
+    const contacts: Record<string, unknown>[] = res.data?.contacts ?? [];
+    all.push(...contacts);
+
+    const meta = res.data?.meta ?? {};
+    if (!meta.nextPageUrl && contacts.length < pageSize) break;
+    if (contacts.length < pageSize) break;
+
+    // GHL v2 pagination uses startAfter (timestamp) + startAfterId
+    const last = contacts[contacts.length - 1] as Record<string, unknown>;
+    startAfter   = String(last.dateAdded ?? "");
+    startAfterId = String(last.id ?? "");
+
+    if (opts?.limit && all.length >= opts.limit) break;
+  }
+
+  return all;
+}
+
+/**
+ * Extract a flat key→value map from GHL contact's customFields array.
+ * GHL returns: customFields: [{id, fieldKey, value}]
+ */
+export function flattenGhlCustomFields(contact: Record<string, unknown>): Record<string, string> {
+  const out: Record<string, string> = {};
+  const arr = contact.customFields as Array<{ fieldKey?: string; id?: string; value?: unknown }> | undefined;
+  if (!Array.isArray(arr)) return out;
+  for (const f of arr) {
+    const key = (f.fieldKey ?? f.id ?? "").toLowerCase().replace(/\s+/g, "_");
+    if (key && f.value != null && f.value !== "") {
+      out[key] = String(f.value);
+    }
+  }
+  return out;
+}
+
 // ─── Attribution Write-back ───────────────────────────────────────────────────
 
 export async function ghlWriteAttribution(
